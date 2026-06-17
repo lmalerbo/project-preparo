@@ -14,13 +14,16 @@ Lê o status de voo (drone) por talhão do portal dronemgmt
      novo via esse fluxo.
 
 Estrutura esperada:
-  dronemgmt_config.json    ← { "base_url", "form_id", "unit_id", "cookie", "xsrf_token" }
+  dronemgmt_config.json    ← { "base_url", "form_id", "unit_id", "usuario", "senha" }
                               (ver dronemgmt_config.example.json)
   supabase_config.json     ← { "url": "...", "key": "sb_publishable_..." }
 
-A autenticação do dronemgmt é por cookie de sessão do navegador, não por token
-fixo — quando expirar, o script falha com 401/403. Nesse caso, repita os passos
-descritos em dronemgmt_config.example.json para capturar um cookie novo.
+O dronemgmt usa cookie de sessão (não token fixo), e o token interno por trás
+dele expira rápido (minutos) mesmo que o cookie pareça válido por mais tempo —
+por isso o script loga via Playwright (navegador headless) a cada execução,
+em vez de depender de um cookie capturado manualmente. Requer, uma única vez:
+  pip install -r engine/requirements.txt
+  python -m playwright install chromium
 """
 
 import os
@@ -37,6 +40,33 @@ from utils import redirecionar_stdout, fechar_log
 _log_fh = redirecionar_stdout(os.path.join(_BASE_DIR, 'logs', 'atualizar_voos.log'))
 
 import requests
+from playwright.sync_api import sync_playwright
+
+
+def login_dronemgmt(base_url, usuario, senha, timeout_ms=30000):
+    """Loga no portal (via Plataforma Coorporativa de Governança de Contratos,
+    SSO da Pedra) usando Playwright headless e retorna (cookie_str, xsrf_token)
+    prontos para as próximas chamadas via requests."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        try:
+            context = browser.new_context()
+            page = context.new_page()
+            page.goto(f"{base_url}/portal/flight-consult", wait_until='networkidle', timeout=timeout_ms)
+            page.get_by_placeholder("Digite seu e-mail").fill(usuario)
+            page.get_by_placeholder("Digite sua senha").fill(senha)
+            page.get_by_role("button", name="Entrar").click()
+            # Espera o app autenticado de fato (não só a URL) — o login passa por
+            # vários redirects (SSO -> callback -> app) antes do cookie ser gravado.
+            page.get_by_text("Consulta Geral").wait_for(timeout=timeout_ms)
+            page.wait_for_load_state('networkidle')
+
+            dm_cookies = [c for c in context.cookies() if c['name'].startswith('DRONEMANAGEMENT-PORTAL')]
+            cookie_str = '; '.join(f"{c['name']}={c['value']}" for c in dm_cookies)
+            xsrf_token = next((c['value'] for c in dm_cookies if c['name'] == 'DRONEMANAGEMENT-PORTAL-XSRF-TOKEN'), None)
+            return cookie_str, xsrf_token
+        finally:
+            browser.close()
 
 # ── controlStatus → descrição. Preencher conforme for confirmado na tela. ──
 # Códigos sem mapeamento aqui aparecem como "Status N" (não ficam em branco).
@@ -84,15 +114,31 @@ with open(_dm_config_path, 'r', encoding='utf-8') as _f:
 DM_BASE_URL = _dm_cfg['base_url'].rstrip('/')
 DM_FORM_ID  = _dm_cfg['form_id']
 DM_UNIT_ID  = _dm_cfg['unit_id']
-DM_COOKIE   = _dm_cfg['cookie']
-DM_XSRF     = _dm_cfg['xsrf_token']
+DM_USUARIO  = _dm_cfg.get('usuario', '')
+DM_SENHA    = _dm_cfg.get('senha', '')
 
-if not DM_COOKIE or not DM_XSRF:
-    print("ERRO: cookie/xsrf_token vazios em dronemgmt_config.json.")
-    print("  Siga os passos do _comentario_cookie / _comentario_xsrf no arquivo de exemplo.")
+if not DM_USUARIO or not DM_SENHA:
+    print("ERRO: usuario/senha vazios em dronemgmt_config.json.")
+    print("  Preencha os dois campos (ver dronemgmt_config.example.json).")
     fechar_log(_log_fh)
     input("\nPressione Enter para sair...")
     sys.exit(1)
+
+print("Fazendo login no dronemgmt (Playwright)...")
+try:
+    DM_COOKIE, DM_XSRF = login_dronemgmt(DM_BASE_URL, DM_USUARIO, DM_SENHA)
+except Exception as e:
+    print(f"ERRO ao logar no dronemgmt: {e}")
+    fechar_log(_log_fh)
+    input("\nPressione Enter para sair...")
+    sys.exit(1)
+
+if not DM_COOKIE or not DM_XSRF:
+    print("ERRO: login não retornou cookie/xsrf válidos (usuário/senha incorretos?).")
+    fechar_log(_log_fh)
+    input("\nPressione Enter para sair...")
+    sys.exit(1)
+print("  Login OK.\n")
 
 _config_path = os.path.join(_BASE_DIR, 'supabase_config.json')
 if not os.path.exists(_config_path):
@@ -140,8 +186,8 @@ while True:
     }
     res = requests.get(_query_url, headers=DM_HEADERS, params=params)
     if res.status_code in (401, 403):
-        print(f"ERRO {res.status_code}: sessão do dronemgmt expirada ou inválida.")
-        print("  Recapture o cookie/xsrf_token (ver dronemgmt_config.example.json) e tente novamente.")
+        print(f"ERRO {res.status_code}: sessão do dronemgmt rejeitada logo após o login.")
+        print("  Pode ser mudança no formid/unit_id ou no fluxo de login — verifique manualmente no navegador.")
         fechar_log(_log_fh)
         input("\nPressione Enter para sair...")
         sys.exit(1)
