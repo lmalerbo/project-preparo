@@ -1,0 +1,19 @@
+# Config local de permissões do Claude Code (por máquina/sessão)
+.claude/settings.local.json
+
+# Dados de runtime / estado local da engine (não vão para o git)
+__pycache__/
+*.pyc
+sistema_preenchimento/logs/*.log
+
+# Bases de dados de entrada (grandes, atualizadas fora do git)
+sistema_preenchimento/base_preparo/*.xlsx
+sistema_preenchimento/base_fazendas/*.xls*
+
+# Config local do Supabase para a engine (ver supabase_config.example.json)
+sistema_preenchimento/supabase_config.json
+sistema_preenchimento/supabase/.temp
+sistema_preenchimento/supabase/.branches
+
+# Credenciais de sessão do portal dronemgmt (ver dronemgmt_config.example.json)
+sistema_preenchimento/dronemgmt_config.json

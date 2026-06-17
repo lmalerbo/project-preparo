@@ -231,17 +231,22 @@
     font-size: 15px; font-weight: 700;
     display: flex; align-items: center; gap: 10px;
   }
-  .frente-tag {
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-family: monospace;
-    color: var(--muted);
-    font-weight: 400;
-  }
   .form-card-body { padding: 18px; }
+
+  /* ── Painel de análise (Registros) ── */
+  .analise-stage {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    background: var(--surface2);
+  }
+  .analise-stage.muted { color: var(--muted); font-size: 13px; }
+  .analise-stage-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; font-weight: 700; font-size: 14px;
+  }
+  .analise-stage input[type="file"] { display: block; margin-bottom: 10px; }
 
   /* ── Cobertura toggle ── */
   .cob-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
@@ -937,16 +942,16 @@
       <span class="dash-progress-pct" id="dashProgressPct">0%</span>
     </div>
 
-    <!-- Linha: Ha por Mês + Ha por Frente -->
+    <!-- Linha: Ha por Mês + Ha por Equipe -->
     <div class="dash-charts-flex">
       <div class="dash-chart-card">
         <div class="dash-chart-title">Ha Programado por Mês</div>
         <canvas id="chartMes" height="220"></canvas>
       </div>
       <div class="dash-chart-card" style="overflow:hidden; min-width:0; display:flex; flex-direction:column">
-        <div class="dash-chart-title">Ha por Frente</div>
-        <div id="chartFrenteWrap" style="position:relative; width:100%; flex:1; min-height:180px">
-          <canvas id="chartFrente"></canvas>
+        <div class="dash-chart-title">Ha por Equipe</div>
+        <div id="chartEquipeWrap" style="position:relative; width:100%; flex:1; min-height:180px">
+          <canvas id="chartEquipe"></canvas>
         </div>
       </div>
     </div>
@@ -971,78 +976,27 @@
 <div class="app">
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <span class="sidebar-title">PLANO DA SEMANA</span>
-      <span class="plan-count" id="planCount">0/0</span>
+      <span class="sidebar-title">MINHAS PENDÊNCIAS</span>
+      <span class="plan-count" id="planCount">0</span>
     </div>
     <div class="plan-search-wrap">
-      <input type="text" id="planSearch" placeholder="+ Adicionar fazenda..."
+      <input type="text" id="planSearch" placeholder="+ Fixar fazenda..."
              oninput="renderPlanDropdown(this.value)" onfocus="renderPlanDropdown(this.value)"
              autocomplete="off">
       <div class="plan-dropdown" id="planDropdown"></div>
     </div>
     <div class="plan-list" id="planList">
-      <div class="plan-empty">Nenhuma fazenda no plano</div>
+      <div class="plan-empty">Carregando...</div>
     </div>
     <div class="sidebar-footer">
-      <button class="btn-clear-plan" onclick="limparPlano()">Limpar lista</button>
+      <button class="btn-clear-plan" onclick="limparPlano()">Limpar fixados</button>
     </div>
   </aside>
   <div class="main" id="mainArea">
 
-    <!-- Banner registros pendentes -->
-    <div id="bannerPendente" style="display:none"></div>
-
-    <!-- Cards de resumo -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label" id="statLabel1">Base ICOL</div>
-        <div class="stat-value" id="statFazendas">—</div>
-        <div class="stat-sub" id="statTalhoes">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Registrado hoje</div>
-        <div class="stat-value" id="statRegFazendas">0</div>
-        <div class="stat-sub" id="statRegTalhoes">0 talhões</div>
-      </div>
-      <div class="stat-card stat-card-accent">
-        <div class="stat-label">Área hoje</div>
-        <div class="stat-value" id="statHa">0,0</div>
-        <div class="stat-sub">hectares</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Progresso</div>
-        <div class="stat-value" id="statPct">0%</div>
-        <div class="stat-sub" id="statProgSub">0 de — fazendas</div>
-      </div>
-    </div>
-
-    <!-- Seletor de Fazenda -->
-    <div class="faz-selector">
-      <div class="faz-selector-row">
-        <span class="faz-selector-label" id="sidebarTitle">Fazendas</span>
-        <div class="faz-search-wrap">
-          <input type="text" id="searchFaz" placeholder="Buscar fazenda por nome ou código..."
-                 oninput="filterFazendas(this.value); _dropIdx=-1;"
-                 onfocus="openFazDropdown()"
-                 onkeydown="onFazSearchKey(event)"
-                 autocomplete="off">
-          <div class="faz-dropdown" id="fazDropdown">
-            <div id="fazendaList"></div>
-          </div>
-        </div>
-        <div class="faz-selected-badge" id="fazSelectedBadge" style="display:none"></div>
-      </div>
-      <div class="faz-filter-row">
-        <span class="faz-filter-label">Filtro:</span>
-        <button class="faz-filter-btn" id="filterAFazer" onclick="setFazFilter('a_fazer')">A Fazer</button>
-        <button class="faz-filter-btn" id="filterMes" onclick="setFazFilter('mes_atual')">Mês</button><select id="mesFilter" class="mes-filter-select" onchange="onMesFilterChange()"></select>
-        <button class="faz-filter-btn" id="filter18m"   onclick="setFazFilter('18m')">18m</button>
-      </div>
-    </div>
-
     <div class="placeholder" id="placeholder">
       <div class="placeholder-icon">&#127807;</div>
-      <div class="placeholder-text">Selecione uma fazenda para preencher</div>
+      <div class="placeholder-text">Selecione uma fazenda na lista para registrar identificação, escoamento ou projeto de preparo</div>
     </div>
 
     <!-- Form -->
@@ -1051,93 +1005,15 @@
         <div class="form-card-header">
           <div class="form-card-title">
             <span id="formFazTitle">—</span>
-            <span class="frente-tag" id="formFrenteTag">—</span>
           </div>
           <div style="font-size:12px;color:var(--muted);font-family:'DM Mono',monospace" id="formCodTag">—</div>
         </div>
-        <div class="form-card-body">
-
-          <!-- Cobertura -->
-          <div class="cob-toggle">
-            <button class="cob-btn active" id="btnInteira" onclick="setCobertura('inteira')">Fazenda Inteira</button>
-            <button class="cob-btn" id="btnParcial" onclick="setCobertura('parcial')">Parcial</button>
-          </div>
-
-          <!-- Talhões -->
-          <div class="talhoes-section">
-            <div class="talhoes-label">
-              <span>Talhões <span id="talSel" style="color:var(--accent)"></span></span>
-              <div class="talhoes-actions" id="talActions" style="display:none">
-                <button class="link-btn" onclick="select18mTal()" style="color:var(--red)">18m</button>
-                <button class="link-btn" onclick="selectAllTal()">todos</button>
-                <button class="link-btn" onclick="selectRestantesTal()">restantes</button>
-                <button class="link-btn" onclick="clearAllTal()">limpar</button>
-              </div>
-            </div>
-            <div class="talhoes-grid" id="talhoesGrid"></div>
-          </div>
-
-          <!-- Campos -->
-          <div class="fields-row">
-            <div class="field-group">
-              <label>Tipo de Linha</label>
-              <select id="selTipo">
-                <option value="">— selecione —</option>
-                <option value="VANT">Linha de Vant</option>
-                <option value="PROJETO">Desdobra de Plantio</option>
-                <option value="SEM LINHAS">Sem Linhas</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label>Ciclo</label>
-              <select id="selCiclo">
-                <option value="">— selecione —</option>
-                <option value="25-26">25-26</option>
-                <option value="26-27">26-27</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label>Status</label>
-              <select id="selStatus">
-                <option value="">— selecione —</option>
-                <option value="CONCLUIDO">Concluído</option>
-                <option value="A FAZER">A Fazer</option>
-                <option value="SEM LINHAS">Sem Linhas</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Submit -->
-          <div class="submit-row">
-            <div class="submit-info" id="submitInfo">selecione os campos acima</div>
-            <button class="btn-submit" id="btnSubmit" onclick="registrar()" disabled>Registrar →</button>
-          </div>
-
-        </div>
-      </div>
-    </div>
-
-    <!-- Log -->
-    <div class="log-section" id="logSection">
-      <div class="section-title">Registros do dia</div>
-      <div class="log-table-wrap">
-        <div id="logContent"><div class="no-records">nenhum registro ainda</div></div>
+        <div class="form-card-body" id="formAnaliseBody"></div>
       </div>
     </div>
 
   </div>
 </div>
-</div>
-
-<!-- Export bar (só na tela de preenchimento) -->
-<div class="export-bar" id="exportBar" style="display:none">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div class="export-info" id="exportInfo">0 registros</div>
-    <button class="btn-clear" id="btnClear" onclick="limparRegistros()" style="display:none">&#128465; Limpar</button>
-  </div>
-  <div style="display:flex;align-items:center;gap:6px">
-    <button class="btn-export" id="btnExport" onclick="consolidar()" disabled>Consolidar</button>
-  </div>
 </div>
 
 <!-- ══ Tela 3: Consulta ════════════════════════════════════════════════════ -->
@@ -1157,8 +1033,8 @@
       <select id="cFiltroMes" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os meses —</option>
       </select>
-      <select id="cFiltroFrente" class="mes-filter-select" onchange="renderConsulta()">
-        <option value="">— todas as frentes —</option>
+      <select id="cFiltroEquipe" class="mes-filter-select" onchange="renderConsulta()">
+        <option value="">— todas as equipes —</option>
       </select>
       <select id="cFiltroStatus" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os status —</option>
@@ -1187,73 +1063,12 @@
 
 <!-- Plan Context Menu -->
 <div id="planCtxMenu" class="ctx-menu">
-  <div class="ctx-menu-item" id="planCtxDoneItem" onclick="planCtxConcluir()">&#9733; Marcar como feita</div>
   <div class="ctx-menu-item" onclick="planCtxAbrir()">&#8594; Abrir fazenda</div>
-  <div class="ctx-menu-item" style="color:var(--red)" onclick="planCtxRemover()">&#10005; Remover do plano</div>
-</div>
-
-<!-- Clear Confirm Modal -->
-<div class="modal-overlay" id="clearConfirmOverlay" onclick="if(event.target===this)closeClearConfirm()">
-  <div class="modal" style="max-width:360px">
-    <h3 style="color:var(--red)">Limpar registros</h3>
-    <p class="clear-confirm-body" id="clearConfirmMsg"></p>
-    <p class="clear-confirm-warn">&#9888;&#65039; Esta ação não pode ser desfeita.</p>
-    <div style="display:flex;gap:10px;justify-content:flex-end">
-      <button class="btn-modal-cancel" onclick="closeClearConfirm()">Cancelar</button>
-      <button class="btn-modal-ok" id="btnConfirmLimpar" onclick="confirmLimpar()" style="background:var(--red)">Limpar tudo</button>
-    </div>
-  </div>
+  <div class="ctx-menu-item" style="color:var(--red)" onclick="planCtxRemover()">&#10005; Remover da lista</div>
 </div>
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
-
-<!-- Modal Edição -->
-<div class="modal-overlay" id="editOverlay">
-  <div class="modal">
-    <h3>Editar Registro</h3>
-    <div class="modal-field">
-      <label>Tipo de Linha</label>
-      <select id="editTipo">
-        <option value="VANT">Linha de Vant</option>
-        <option value="PROJETO">Desdobra de Plantio</option>
-        <option value="SEM LINHAS">Sem Linhas</option>
-      </select>
-    </div>
-    <div class="modal-field">
-      <label>Ciclo</label>
-      <select id="editCiclo">
-        <option value="25-26">25-26</option>
-        <option value="26-27">26-27</option>
-      </select>
-    </div>
-    <div class="modal-field">
-      <label>Status</label>
-      <select id="editStatus">
-        <option value="CONCLUIDO">Concluído</option>
-        <option value="A FAZER">A Fazer</option>
-        <option value="SEM LINHAS">Sem Linhas</option>
-      </select>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-modal-cancel" onclick="closeEditModal()">Cancelar</button>
-      <button class="btn-modal-ok" onclick="saveEdit()">Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Consolidar -->
-<div class="modal-overlay" id="consolidarOverlay">
-  <div class="modal" style="max-width:600px;width:92%">
-    <h3 id="consolidarTitle">Consolidando...</h3>
-    <div id="consolidarBody" style="margin:12px 0"></div>
-    <div class="modal-actions" id="consolidarActions" style="display:none">
-      <button class="btn-modal-cancel" id="btnConsolidarFallback" onclick="_baixarFallback()" style="display:none">⬇ Baixar XLSX</button>
-      <button class="btn-modal-cancel" id="btnConsolidarLimpar" onclick="_limparFallback()" style="display:none">🗑 Limpar registros</button>
-      <button class="btn-modal-ok" id="btnFecharConsolidar" onclick="fecharConsolidar()">Fechar</button>
-    </div>
-  </div>
-</div>
 
 <!-- Modal Usuários -->
 <div class="modal-overlay" id="modalOverlay">
@@ -1282,7 +1097,8 @@
         <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Novo usuário</label>
         <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
           <input type="text" id="inputAdminUser" placeholder="Nome" style="flex:1">
-          <label class="admin-perfil-check"><input type="checkbox" id="chkPreenchimento" checked> Preencher</label>
+          <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaA" checked> Analista A</label>
+          <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaB" checked> Analista B</label>
           <label class="admin-perfil-check"><input type="checkbox" id="chkDashboard" checked> Dashboard</label>
           <button class="btn-modal-ok" onclick="adminAddUser()" style="padding:8px 14px;white-space:nowrap">+</button>
         </div>
@@ -1290,19 +1106,21 @@
       <p class="admin-note">Para aplicar em todos os computadores: clique em "Exportar", salve o arquivo <strong>usuarios.json</strong> na pasta do projeto e rode <strong>ATUALIZAR.bat</strong>.</p>
 
       <div class="admin-section">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Atualizar base ICOL / Fazendas</label>
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Atualizar base / Fazendas</label>
 
         <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-          <span style="font-size:12px;flex:1">Base ICOL (.xlsm)</span>
-          <input type="file" id="inputBaseIcol" accept=".xlsm" style="font-size:11px;max-width:170px">
-          <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('icol')" title="Formato esperado">ⓘ</button>
+          <span style="font-size:12px;flex:1">Planilha de preparo (.xlsx)</span>
+          <input type="file" id="inputBasePreparo" accept=".xlsx" style="font-size:11px;max-width:170px">
+          <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('preparo')" title="Formato esperado">ⓘ</button>
         </div>
-        <div id="infoBaseIcol" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
-          Aba <strong>"BASE PARA PLANEJAMENTO"</strong>, sem cabeçalho fixo: o sistema usa a primeira
-          linha em que a <strong>coluna AA</strong> tiver um número como início dos dados.
-          <strong>Coluna H</strong> = FRENTE, <strong>coluna I</strong> = PERÍODO OP (mês),
-          <strong>coluna AA</strong> = COD FAZ, <strong>coluna AB</strong> = FAZENDA. Uma linha por fazenda.
-          <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloICOL()">⬇ Baixar modelo</button></div>
+        <div id="infoBasePreparo" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
+          Usa a aba <strong>"CONSERVAÇÃO"</strong>. O sistema localiza automaticamente a linha de
+          cabeçalho (procura por <strong>CODIGO</strong>, <strong>SEÇÃO</strong> e <strong>TALHÕES</strong>).
+          Colunas lidas: <strong>FRENTE</strong> (equipe), <strong>MÊS</strong>, <strong>CODIGO</strong>,
+          <strong>SEÇÃO</strong>, <strong>TALHÕES</strong> (aceita lista "1,2,3", faixa "1 AO 4" ou
+          número único), <strong>TIPO ÁREA</strong> e <strong>VOOS</strong>. Uma linha pode cobrir
+          vários talhões — cada um vira um registro.
+          <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloPreparo()">⬇ Baixar modelo</button></div>
         </div>
 
         <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
@@ -1312,9 +1130,9 @@
         </div>
         <div id="infoBaseFazendas" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
           Cabeçalho na primeira linha, com as colunas <strong>SECAO</strong> (código da fazenda),
-          <strong>DESC_SECAO</strong> (nome da fazenda), <strong>TALHAO</strong> (número do talhão),
-          <strong>AREA_PROD</strong> (área em ha) e <strong>ESTAGIO</strong> (opcional). Uma linha por
-          talhão — toda fazenda do ICOL precisa ter aqui os seus talhões, senão é ignorada.
+          <strong>DESC_SECAO</strong> (nome da fazenda), <strong>TALHAO</strong> (número do talhão) e
+          <strong>AREA_PROD</strong> (área em ha). Uma linha por talhão — fornece a área de cada talhão
+          listado na planilha de preparo; talhão sem entrada aqui fica com área 0.
           <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloBaseFazendas()">⬇ Baixar modelo</button></div>
         </div>
 
@@ -1341,19 +1159,16 @@ const USUARIOS_HA = {};
 const USUARIOS_CONFIG = [];
 const FAZENDAS = {};
 const FAZENDA_NAMES = Object.keys(FAZENDAS).sort();
-let currentNames = FAZENDA_NAMES;
-let activeFilters = new Set();
 
-// ── Upload de arquivos de projeto (.dwg/.zip) para Releases do GitHub ─────
+// ── Upload de arquivos de projeto (.dwg/.zip/.pdf) para Releases do GitHub ─
 // Feito via proxy (Cloudflare Worker) — o token do GitHub fica guardado lá como
 // secret, nunca neste arquivo (que é público). Ver cloudflare-worker/release-proxy.js.
-const RELEASE_PROXY_URL = 'PLACEHOLDER_PREPARO_PROXY_URL';
-const RE_ARQ_PROJETO = /^(\d+)_.+_(Rev\d+|Exp\d+)\.(dwg|zip|pdf)$/i;
+const RELEASE_PROXY_URL = 'https://project-preparo-proxy.leonardo-malerbo.workers.dev/';
 
 // ── Banco de dados (Supabase) ─────────────────────────────────────────────
 // Publishable key — feita para ser pública; segurança vem das policies de RLS.
-const SUPABASE_URL = 'PLACEHOLDER_PREPARO_SUPABASE_URL';
-const SUPABASE_KEY = 'PLACEHOLDER_PREPARO_SUPABASE_KEY';
+const SUPABASE_URL = 'https://msdkrkakuwmskoidxmxl.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_eJA9YDyXdRI73lqPPYnATA_INEU3vzu';
 
 // COD FAZ com este prefixo são unidades administrativas (espelha config.json:codfaz_excluir_prefixo)
 const CODFAZ_EXCLUIR_PREFIXO = '20';
@@ -1385,23 +1200,38 @@ async function _sbFetchAll(url) {
 // dados embutidos (mantidos como seed/fallback caso a requisição falhe).
 async function carregarDadosSupabase() {
   try {
-    const [programacao, logs, usuarios] = await Promise.all([
+    const [programacao, logs, usuarios, analises] = await Promise.all([
       _sbFetchAll(`${SUPABASE_URL}/rest/v1/programacao?select=*`),
       _sbFetchAll(`${SUPABASE_URL}/rest/v1/log_exportacoes?select=usuario,layer,data_consolidacao&order=data_consolidacao.asc`),
       _sbFetchAll(`${SUPABASE_URL}/rest/v1/usuarios?select=*`),
+      _sbFetchAll(`${SUPABASE_URL}/rest/v1/fazenda_analise?select=*`).catch(() => []),
     ]);
     if (!programacao.length) return;
+
+    const analiseMap = new Map(analises.map(a => [a.cod_faz, a]));
 
     for (const k of Object.keys(FAZENDAS)) delete FAZENDAS[k];
     const layerHa = {};
     for (const row of programacao) {
       const faz = row.fazenda;
       if (!faz) continue;
-      if (!FAZENDAS[faz]) FAZENDAS[faz] = { cod: row.cod_faz, talhoes: {} };
+      if (!FAZENDAS[faz]) {
+        const an = analiseMap.get(row.cod_faz) || {};
+        FAZENDAS[faz] = {
+          cod: row.cod_faz, talhoes: {},
+          analise: {
+            identificacao_ok: !!an.identificacao_ok,
+            escoamento_ok:    !!an.escoamento_ok,
+            preparo_ok:       !!an.preparo_ok,
+          },
+        };
+      }
       FAZENDAS[faz].talhoes[String(row.talhao)] = {
-        layer: row.layer, frente: row.frente, semana: row.periodo_op,
+        layer: row.layer, semana: row.periodo_op,
         exp: row.status || '', tipo: row.tipo_linha || '', ciclo: row.ciclo || '',
-        ha: row.area_ha || 0, dia: null, estagio: row.estagio || ''
+        ha: row.area_ha || 0, dia: null, estagio: row.estagio || '',
+        equipe: row.equipe || '', voo: row.voo || '',
+        done: !!FAZENDAS[faz].analise.preparo_ok,
       };
       layerHa[String(row.layer)] = row.area_ha || 0;
     }
@@ -1422,43 +1252,82 @@ async function carregarDadosSupabase() {
     if (usuarios.length) {
       USUARIOS_CONFIG.length = 0;
       usuarios.forEach(u => USUARIOS_CONFIG.push({ nome: u.nome, perfis: u.perfis || [] }));
-      adminConfig = USUARIOS_CONFIG.map(u => ({ nome: u.nome.toLowerCase(), perfis: u.perfis || ['preenchimento','dashboard'] }));
+      adminConfig = USUARIOS_CONFIG.map(u => ({ nome: u.nome.toLowerCase(), perfis: _expandPerfisLegado(u.perfis || ['analista_a','analista_b','dashboard']) }));
     }
   } catch (e) {
     console.error('Falha ao carregar dados do Supabase — usando dados locais embutidos:', e);
   }
 }
 
-// ── Atualizar base ICOL/Fazendas direto pelo navegador ────────────────────
+// ── Atualizar base de preparo/Fazendas direto pelo navegador ──────────────
 function _toggleInfoBase(which) {
-  const el = document.getElementById(which === 'icol' ? 'infoBaseIcol' : 'infoBaseFazendas');
+  const el = document.getElementById(which === 'preparo' ? 'infoBasePreparo' : 'infoBaseFazendas');
   el.style.display = el.style.display === 'none' ? '' : 'none';
 }
 
-function _baixarModeloICOL() {
-  const row = (vals) => {
-    const arr = new Array(28).fill('');
-    for (const [i, v] of Object.entries(vals)) arr[+i] = v;
-    return arr;
-  };
+// ── Helpers de parsing (mesma lógica do engine/utils.py) ──────────────────
+const _COMBINING_MARKS_RE = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
+function _stripAccents(s) {
+  return String(s ?? '').normalize('NFD').replace(_COMBINING_MARKS_RE, '');
+}
+function _normHeader(s) {
+  return _stripAccents(s).trim().toUpperCase();
+}
+const _MESES_PT = {
+  JANEIRO: 1, FEVEREIRO: 2, MARCO: 3, ABRIL: 4, MAIO: 5, JUNHO: 6,
+  JULHO: 7, AGOSTO: 8, SETEMBRO: 9, OUTUBRO: 10, NOVEMBRO: 11, DEZEMBRO: 12,
+};
+function _mesToPeriodo(v) {
+  if (v === undefined || v === null || v === '') return null;
+  return _MESES_PT[_normHeader(v)] ?? null;
+}
+function _parseTalhoes(raw) {
+  if (raw === undefined || raw === null || raw === '') return [];
+  if (typeof raw === 'number') {
+    if (Number.isInteger(raw)) return [raw];
+    const s = String(Math.round(raw * 10000) / 10000);
+    if (!s.includes('.')) return [Math.trunc(raw)];
+    const [intPart, fracRaw] = s.split('.');
+    const frac = fracRaw.replace(/0+$/, '');
+    if (!frac) return [Math.trunc(raw)];
+    return [parseInt(intPart, 10), parseInt(frac, 10)];
+  }
+  const s = String(raw).trim();
+  if (!s) return [];
+  const out = [];
+  for (let tok of s.split(/[,;]/)) {
+    tok = tok.trim();
+    if (!tok) continue;
+    const faixa = tok.match(/^(\d+)\s*A[OÀ]\s*(\d+)$/i);
+    if (faixa) {
+      const a = parseInt(faixa[1], 10), b = parseInt(faixa[2], 10);
+      for (let n = Math.min(a, b); n <= Math.max(a, b); n++) out.push(n);
+      continue;
+    }
+    const digits = tok.match(/\d+/);
+    if (digits) out.push(parseInt(digits[0], 10));
+  }
+  return out;
+}
+
+function _baixarModeloPreparo() {
   const data = [
-    row({ 0: 'Linhas acima da primeira com número na coluna AA (COD FAZ) são ignoradas.' }),
-    row({ 7: 'FRENTE', 8: 'PERÍODO OP', 26: 'COD FAZ', 27: 'FAZENDA' }),
-    row({ 7: 2, 8: 6, 26: 10503, 27: 'SANTA LUZIA 5' }),
-    row({ 7: 3, 8: 7, 26: 10504, 27: 'SANTA LUZIA 6' }),
+    ['FRENTE', 'MÊS', 'STATUS', 'SEQUENCIA', 'CODIGO', 'SEÇÃO', 'TALHÕES', 'HA', 'TIPO AREA', 'VOOS'],
+    ['FRAN TERRA', 'MARÇO', 'OK', 1, 10503, 'SANTA LUZIA 5', '1,2,3', 36.74, 'REFORMA', 'OK'],
+    ['MEGACENTER', 'ABRIL', 'OK', 1, 10504, 'SANTA LUZIA 6', '1 AO 4', 54.1, 'EXPANSÃO', 'PEDIDO'],
   ];
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
-  XLSX.utils.book_append_sheet(wb, ws, 'BASE PARA PLANEJAMENTO');
-  XLSX.writeFile(wb, 'modelo_base_icol.xlsx');
+  XLSX.utils.book_append_sheet(wb, ws, 'CONSERVAÇÃO');
+  XLSX.writeFile(wb, 'modelo_base_preparo.xlsx');
 }
 
 function _baixarModeloBaseFazendas() {
   const data = [
-    ['SECAO', 'DESC_SECAO', 'TALHAO', 'AREA_PROD', 'ESTAGIO'],
-    [10503, 'SANTA LUZIA 5', 1, 25.4, 'SOQUEIRA'],
-    [10503, 'SANTA LUZIA 5', 2, 18.9, 'CANA PLANTA'],
-    [10504, 'SANTA LUZIA 6', 1, 32.1, 'SOQUEIRA'],
+    ['SECAO', 'DESC_SECAO', 'TALHAO', 'AREA_PROD'],
+    [10503, 'SANTA LUZIA 5', 1, 25.4],
+    [10503, 'SANTA LUZIA 5', 2, 18.9],
+    [10504, 'SANTA LUZIA 6', 1, 32.1],
   ];
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.aoa_to_sheet(data);
@@ -1472,83 +1341,104 @@ function _logBase(msg) {
 }
 
 async function processarAtualizacaoBase() {
-  const fIcol = document.getElementById('inputBaseIcol')?.files?.[0];
-  const fFaz  = document.getElementById('inputBaseFazendas')?.files?.[0];
+  const fPreparo = document.getElementById('inputBasePreparo')?.files?.[0];
+  const fFaz     = document.getElementById('inputBaseFazendas')?.files?.[0];
   const log = document.getElementById('logBaseAtualizacao');
   if (log) log.innerHTML = '';
 
-  if (!fIcol || !fFaz) {
-    _logBase('<span style="color:var(--red)">Selecione os dois arquivos (ICOL e base de fazendas).</span>');
+  if (!fPreparo || !fFaz) {
+    _logBase('<span style="color:var(--red)">Selecione os dois arquivos (planilha de preparo e base de fazendas).</span>');
     return;
   }
 
   try {
     _logBase('Lendo arquivos...');
-    const [bufIcol, bufFaz] = await Promise.all([fIcol.arrayBuffer(), fFaz.arrayBuffer()]);
-    const wbIcol = XLSX.read(bufIcol, { type: 'array' });
-    const wbFaz  = XLSX.read(bufFaz,  { type: 'array' });
+    const [bufPreparo, bufFaz] = await Promise.all([fPreparo.arrayBuffer(), fFaz.arrayBuffer()]);
+    const wbPreparo = XLSX.read(bufPreparo, { type: 'array' });
+    const wbFaz     = XLSX.read(bufFaz,     { type: 'array' });
 
-    // ── Parse ICOL: aba "BASE PARA PLANEJAMENTO", colunas H/I/AA/AB por posição ──
-    const sheetName = wbIcol.SheetNames.find(n => n.trim().toUpperCase() === 'BASE PARA PLANEJAMENTO') || wbIcol.SheetNames[0];
-    const wsIcol = wbIcol.Sheets[sheetName];
-    const rowsIcol = XLSX.utils.sheet_to_json(wsIcol, { header: 1, raw: true });
+    // ── Parse preparo: aba "CONSERVAÇÃO", cabeçalho localizado por nome ──
+    const sheetName = wbPreparo.SheetNames.find(n => _normHeader(n) === 'CONSERVACAO');
+    if (!sheetName) throw new Error(`Aba "CONSERVAÇÃO" não encontrada. Abas disponíveis: ${wbPreparo.SheetNames.join(', ')}`);
+    const wsPreparo = wbPreparo.Sheets[sheetName];
+    const rowsPreparo = XLSX.utils.sheet_to_json(wsPreparo, { header: 1, raw: true });
 
-    let firstDataRow = -1;
-    for (let i = 0; i < rowsIcol.length; i++) {
-      const cell = rowsIcol[i]?.[26];
-      if (cell !== undefined && cell !== '' && !isNaN(Number(cell))) { firstDataRow = i; break; }
+    let headerRow = -1, colIdx = {};
+    for (let i = 0; i < Math.min(15, rowsPreparo.length); i++) {
+      const norms = (rowsPreparo[i] || []).map(_normHeader);
+      if (norms.includes('CODIGO') && norms.includes('SECAO') && norms.includes('TALHOES')) {
+        headerRow = i;
+        norms.forEach((n, j) => { if (n) colIdx[n] = j; });
+        break;
+      }
     }
-    if (firstDataRow < 0) throw new Error('Não foi possível localizar dados na aba "BASE PARA PLANEJAMENTO" (coluna AA deve conter o COD FAZ).');
+    if (headerRow < 0) throw new Error('Não foi possível localizar o cabeçalho (CODIGO/SEÇÃO/TALHÕES) na aba "CONSERVAÇÃO".');
 
-    const icolMap = new Map(); // codFaz → {frente, periodoOp, fazenda}
-    for (let i = firstDataRow; i < rowsIcol.length; i++) {
-      const r = rowsIcol[i];
-      const cell = r?.[26];
-      if (cell === undefined || cell === '' || isNaN(Number(cell))) continue;
-      const codFaz = Number(cell);
-      if (icolMap.has(codFaz)) continue; // dedupe, mantém o primeiro
-      icolMap.set(codFaz, {
-        frente: Number(r?.[7]),
-        periodoOp: Number(r?.[8]),
-        fazenda: String(r?.[27] ?? '').trim(),
-      });
+    const iFrente = colIdx['FRENTE'], iMes = colIdx['MES'], iCod = colIdx['CODIGO'],
+          iSec = colIdx['SECAO'], iTal = colIdx['TALHOES'], iTipo = colIdx['TIPO AREA'],
+          iVoo = colIdx['VOOS'] ?? colIdx['VOO'];
+
+    let nLinhas = 0, nAdmin = 0, nIgnoradas = 0, nFalhaTalhao = 0;
+    const exploded = [];
+    for (let i = headerRow + 1; i < rowsPreparo.length; i++) {
+      const r = rowsPreparo[i] || [];
+      const codRaw = r[iCod], secRaw = r[iSec], talRaw = r[iTal];
+      if (codRaw === undefined || codRaw === '' || secRaw === undefined || secRaw === '' || talRaw === undefined || talRaw === '') {
+        if (codRaw !== undefined || secRaw !== undefined || talRaw !== undefined) nIgnoradas++;
+        continue;
+      }
+      const codFaz = Number(codRaw);
+      if (isNaN(codFaz)) { nIgnoradas++; continue; }
+      if (String(codFaz).startsWith(CODFAZ_EXCLUIR_PREFIXO)) { nAdmin++; continue; }
+
+      const talhoes = _parseTalhoes(talRaw);
+      if (!talhoes.length) { nFalhaTalhao++; continue; }
+
+      nLinhas++;
+      const fazenda    = String(secRaw).trim();
+      const periodoOp  = iMes !== undefined ? _mesToPeriodo(r[iMes]) : null;
+      const estagio    = iTipo !== undefined && r[iTipo] ? String(r[iTipo]).trim().toUpperCase() : '';
+      const equipe     = iFrente !== undefined && r[iFrente] ? String(r[iFrente]).trim().toUpperCase() : '';
+      const voo        = iVoo !== undefined && r[iVoo] ? String(r[iVoo]).trim().toUpperCase() : '';
+
+      for (const talhao of talhoes) {
+        exploded.push({ cod_faz: codFaz, fazenda, talhao, periodo_op: periodoOp, estagio, equipe, voo });
+      }
     }
-    _logBase(`ICOL: ${icolMap.size} fazenda(s) única(s).`);
+    _logBase(`Preparo: ${nLinhas} linha(s) de demanda, ${exploded.length} talhão(ões) explodido(s).`);
+    if (nAdmin)        _logBase(`${nAdmin} linha(s) administrativa(s) (prefixo ${CODFAZ_EXCLUIR_PREFIXO}) excluída(s).`);
+    if (nIgnoradas)    _logBase(`<span style="color:var(--accent)">⚠ ${nIgnoradas} linha(s) parcial(is) ignorada(s) (faltava CODIGO/SEÇÃO/TALHÕES).</span>`);
+    if (nFalhaTalhao)  _logBase(`<span style="color:var(--accent)">⚠ ${nFalhaTalhao} linha(s) com TALHÕES não interpretável.</span>`);
 
     // ── Parse base de fazendas: aba 1, colunas por nome ──
     const wsFaz = wbFaz.Sheets[wbFaz.SheetNames[0]];
     const rowsFaz = XLSX.utils.sheet_to_json(wsFaz, { raw: true });
-    const fazPorCod = new Map(); // codFaz → [{ talhao, areaHa, estagio }]
+    const areaPorLayer = new Map(); // "codFaz-talhao" → areaHa
     for (const r of rowsFaz) {
       const codFaz = Number(r['SECAO']);
       const talhao = Number(r['TALHAO']);
       if (isNaN(codFaz) || isNaN(talhao)) continue;
       const areaHa = Math.round((Number(r['AREA_PROD']) || 0) * 100) / 100;
-      const estagio = String(r['ESTAGIO'] ?? '').trim();
-      if (!fazPorCod.has(codFaz)) fazPorCod.set(codFaz, []);
-      fazPorCod.get(codFaz).push({ talhao, areaHa, estagio });
+      areaPorLayer.set(`${codFaz}-${talhao}`, areaHa);
     }
     _logBase(`Base fazendas: ${rowsFaz.length} talhão(ões) lidos.`);
 
-    // ── Merge ICOL × base de fazendas ──
-    let semBase = 0;
-    let excluidasAdmin = 0;
-    const progRows = [];
-    for (const [codFaz, icolRow] of icolMap) {
-      if (String(codFaz).startsWith(CODFAZ_EXCLUIR_PREFIXO)) { excluidasAdmin++; continue; }
-      const talhoes = fazPorCod.get(codFaz);
-      if (!talhoes || !talhoes.length) { semBase++; continue; }
-      for (const t of talhoes) {
-        const layer = Number(`${codFaz}${String(t.talhao).padStart(3, '0')}`);
-        progRows.push({
-          layer, frente: icolRow.frente, periodo_op: icolRow.periodoOp,
-          cod_faz: codFaz, fazenda: icolRow.fazenda,
-          talhao: t.talhao, area_ha: t.areaHa, estagio: t.estagio,
-        });
-      }
+    // ── Monta registros por LAYER (último ganha em caso de talhão duplicado) ──
+    const porLayer = new Map();
+    let semArea = 0;
+    for (const r of exploded) {
+      const layer = Number(`${r.cod_faz}${String(r.talhao).padStart(3, '0')}`);
+      const areaHa = areaPorLayer.get(`${r.cod_faz}-${r.talhao}`) || 0;
+      if (!areaHa) semArea++;
+      porLayer.set(layer, {
+        layer, periodo_op: r.periodo_op, cod_faz: r.cod_faz, fazenda: r.fazenda,
+        talhao: r.talhao, area_ha: areaHa, estagio: r.estagio, equipe: r.equipe, voo: r.voo,
+      });
     }
-    if (excluidasAdmin) _logBase(`${excluidasAdmin} fazenda(s) administrativa(s) (prefixo ${CODFAZ_EXCLUIR_PREFIXO}) excluída(s).`);
-    if (semBase) _logBase(`<span style="color:var(--accent)">⚠ ${semBase} fazenda(s) do ICOL sem talhões na base de fazendas (ignoradas).</span>`);
+    const progRows = [...porLayer.values()];
+    const nDup = exploded.length - progRows.length;
+    if (nDup) _logBase(`${nDup} talhão(ões) duplicado(s) entre linhas — mantida a última ocorrência.`);
+    if (semArea) _logBase(`<span style="color:var(--accent)">⚠ ${semArea} talhão(ões) sem área encontrada na base de fazendas (área = 0).</span>`);
     _logBase(`${progRows.length} talhão(ões) para processar.`);
     if (!progRows.length) { _logBase('<span style="color:var(--red)">Nada para enviar.</span>'); return; }
 
@@ -1594,7 +1484,6 @@ async function processarAtualizacaoBase() {
     _logBase('<span style="color:var(--green);font-weight:700">Atualização concluída!</span>');
 
     await carregarDadosSupabase();
-    renderFazendas(currentNames);
     renderPlano();
     renderDashboard();
   } catch (e) {
@@ -1605,24 +1494,7 @@ async function processarAtualizacaoBase() {
 // ── State ─────────────────────────────────────────────────────────────────
 let currentUser = (localStorage.getItem('gf_user') || '').toLowerCase();
 if (currentUser) localStorage.setItem('gf_user', currentUser);
-let exportado   = false;
-
-window.addEventListener('beforeunload', e => {
-  if (records.length > 0 && !exportado) {
-    e.preventDefault();
-    e.returnValue = '';
-  }
-});
 let currentFaz  = null;
-let cobertura   = 'inteira';
-let records     = [];
-let _arquivosEsperados = [];
-let _arquivosSelecionados = [];
-let _pendingReload = false;
-
-// Load today's records from localStorage
-const todayKey = 'gf_records_' + new Date().toISOString().slice(0,10);
-try { records = JSON.parse(localStorage.getItem(todayKey) || '[]'); } catch(e) { records = []; }
 
 // ── Init ──────────────────────────────────────────────────────────────────
 window.onload = async () => {
@@ -1635,78 +1507,14 @@ window.onload = async () => {
   await carregarDadosSupabase();
   loading.remove();
 
-  populateMesFilter();
-  document.getElementById('sidebarTitle').textContent = `Fazendas (${FAZENDA_NAMES.length})`;
   updateUserBadge();
   if (currentUser) applyUserPermissions(currentUser);
-  renderLog();
-  updateExportBar(); updateStats();
-  checkPendentes();
   renderPlano();
   renderDashboard();
   if (!currentUser) setTimeout(openUserModal, 400);
   const lastFaz = sessionStorage.getItem('gf_lastFaz');
   if (lastFaz && FAZENDAS[lastFaz]) selectFazenda(lastFaz);
 };
-
-// ── Registros pendentes de dias anteriores ────────────────────────────────
-function checkPendentes() {
-  const hoje = new Date().toISOString().slice(0, 10);
-  let pendente = null;
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (!key.startsWith('gf_records_')) continue;
-    const dia = key.replace('gf_records_', '');
-    if (dia === hoje) continue;
-    try {
-      const recs = JSON.parse(localStorage.getItem(key) || '[]');
-      if (recs.length > 0) { pendente = { key, dia, recs }; break; }
-    } catch(_) {}
-  }
-  if (!pendente) return;
-
-  const { key, dia, recs } = pendente;
-  const ha = totalHaRecords(recs);
-  const [ano, mes, d] = dia.split('-');
-  const diaFmt = `${d}/${mes}/${ano}`;
-  const banner = document.getElementById('bannerPendente');
-  banner.innerHTML = `<div class="banner-pendente">
-    <span>Você tem <strong>${recs.length} registros não exportados de ${diaFmt}</strong> (${ha.toFixed(1)} ha). Exportar antes de continuar?</span>
-    <div class="banner-actions">
-      <button class="btn-banner-export" onclick="exportarPendente('${key}','${diaFmt}')">Exportar agora</button>
-      <button class="btn-banner-discard" onclick="descartarPendente('${key}')">Descartar</button>
-    </div>
-  </div>`;
-  banner.style.display = 'block';
-}
-
-function exportarPendente(key, diaFmt) {
-  const recs = JSON.parse(localStorage.getItem(key) || '[]');
-  if (!recs.length) { descartarPendente(key); return; }
-  const usuario = recs[0]?.usuario || currentUser || 'usuario';
-  const dia = key.replace('gf_records_', '');
-  const wsData = [
-    ['TIMESTAMP','USUARIO','LAYER','COD_FAZ','FAZENDA','TALHAO','FRENTE','SEMANA','AREA_HA','TIPO_LINHA','CICLO','STATUS'],
-    ...recs.map(r => [
-      r.timestamp, r.usuario, r.layer, r.cod_faz,
-      r.fazenda, r.talhao, r.frente, r.semana,
-      r.ha || 0, r.tipo, r.ciclo, r.status
-    ])
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [18,12,12,10,28,8,8,8,9,18,8,14].map(w => ({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-  XLSX.writeFile(wb, `export_frentes_${usuario}_${dia}.xlsx`);
-  descartarPendente(key);
-  showToast(`${recs.length} registros de ${diaFmt} exportados.`);
-}
-
-function descartarPendente(key) {
-  localStorage.removeItem(key);
-  document.getElementById('bannerPendente').style.display = 'none';
-  checkPendentes();
-}
 
 // ── Mês atual ─────────────────────────────────────────────────────────────
 const _hoje = new Date();
@@ -1737,102 +1545,6 @@ function isCurMonth(t) {
   if (!ym) return false;
   const [y, m] = ym.split('-').map(Number);
   return y === _anoAtual && m === _mesAtual + 1;
-}
-
-function isSelMonth(t) {
-  const ym = talYM(t);
-  if (!ym) return false;
-  const [y, m] = ym.split('-').map(Number);
-  const sel = document.getElementById('mesFilter');
-  if (!sel || !sel.value) return y === _anoAtual && m === _mesAtual + 1;
-  const [sy, sm] = sel.value.split('-').map(Number);
-  return y === sy && m === sm;
-}
-
-function populateMesFilter() {
-  const months = new Set();
-  const todayKey = `${_anoAtual}-${String(_mesAtual + 1).padStart(2, '0')}`;
-  Object.values(FAZENDAS).forEach(faz =>
-    Object.values(faz.talhoes).forEach(t => {
-      const ym = talYM(t);
-      if (ym) months.add(ym);
-    })
-  );
-  const sorted = [...months].sort();
-  const sel = document.getElementById('mesFilter');
-  sel.innerHTML = sorted.map(ym => {
-    const [y, m] = ym.split('-');
-    const label = new Date(+y, +m - 1).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' })
-      .replace(/\./g, '').toUpperCase();
-    return `<option value="${ym}"${ym === todayKey ? ' selected' : ''}>${label}</option>`;
-  }).join('');
-}
-
-function onMesFilterChange() {
-  filterFazendas(document.getElementById('searchFaz').value);
-}
-
-// ── Fazenda dropdown ──────────────────────────────────────────────────────
-function renderFazendas(names) {
-  const registered = new Set(records.map(r => r.fazenda));
-  document.getElementById('fazendaList').innerHTML = names.length
-    ? names.map(name => {
-        const d = FAZENDAS[name];
-        const nTal = Object.keys(d.talhoes).length;
-        const done = registered.has(name);
-        const nMes = Object.values(d.talhoes).filter(t => isSelMonth(t)).length;
-        const { status, cls, ciclo } = getFazStatus(name);
-        return `<div class="fazenda-item${done ? ' registered' : ''}${name === currentFaz ? ' active' : ''}${nMes > 0 ? ' has-mes-atual' : ''}"
-                     data-name="${name.replace(/"/g,'&quot;')}"
-                     onmousedown="selectFazenda('${name.replace(/'/g,"\\'")}')">
-          <div style="flex:1;min-width:0">
-            <div class="fazenda-name">${name}${done ? ' <span class="reg-dot">&#10003;</span>' : ''}</div>
-            <div class="fazenda-meta" style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap">
-              <span class="faz-tag faz-tag-${cls}">${status}</span>
-              <span class="faz-tag faz-tag-muted">${ciclo}</span>
-              ${nMes > 0 ? `<span style="font-size:9px;color:var(--green);font-weight:700">● mês</span>` : ''}
-            </div>
-          </div>
-          <div class="fazenda-count">${nTal} tal.</div>
-        </div>`;
-      }).join('')
-    : '<div style="padding:12px 14px;color:var(--muted);font-size:13px">Nenhuma fazenda encontrada</div>';
-}
-
-function openFazDropdown() {
-  filterFazendas(document.getElementById('searchFaz').value);
-  document.getElementById('fazDropdown').classList.add('open');
-}
-
-function closeFazDropdown() {
-  document.getElementById('fazDropdown').classList.remove('open');
-  if (currentFaz) document.getElementById('searchFaz').value = '';
-}
-
-// ── Keyboard navigation in fazenda dropdown ───────────────────────────────
-let _dropIdx = -1;
-function _dropItems() { return [...document.querySelectorAll('#fazendaList .fazenda-item')]; }
-function _dropHighlight(idx) {
-  const items = _dropItems();
-  items.forEach(el => el.classList.remove('kb-focus'));
-  _dropIdx = Math.max(-1, Math.min(idx, items.length - 1));
-  if (_dropIdx >= 0) {
-    items[_dropIdx].classList.add('kb-focus');
-    items[_dropIdx].scrollIntoView({ block: 'nearest' });
-  }
-}
-function onFazSearchKey(e) {
-  const isOpen = document.getElementById('fazDropdown').classList.contains('open');
-  if (e.key === 'Escape') { closeFazDropdown(); return; }
-  if (!isOpen) { if (e.key === 'ArrowDown') { openFazDropdown(); return; } return; }
-  if (e.key === 'ArrowDown')  { e.preventDefault(); _dropHighlight(_dropIdx + 1); return; }
-  if (e.key === 'ArrowUp')    { e.preventDefault(); _dropHighlight(_dropIdx - 1); return; }
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    const items = _dropItems();
-    const target = _dropIdx >= 0 ? items[_dropIdx] : items.length === 1 ? items[0] : null;
-    if (target?.dataset.name) selectFazenda(target.dataset.name);
-  }
 }
 
 // ── Context Menu ──────────────────────────────────────────────────────────
@@ -1870,548 +1582,141 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeCtxMe
 document.addEventListener('click',   e => { if (!document.getElementById('planCtxMenu').contains(e.target)) closePlanCtxMenu(); });
 document.addEventListener('scroll',  () => closePlanCtxMenu(), true);
 
-const _filterMap = {
-  a_fazer:  ['filterAFazer', 'active-blue'],
-  mes_atual:['filterMes',    'active-green'],
-  '18m':    ['filter18m',    'active-red'],
-};
-
-function setFazFilter(type) {
-  if (activeFilters.has(type)) activeFilters.delete(type);
-  else activeFilters.add(type);
-  Object.values(_filterMap).forEach(([id, cls]) =>
-    document.getElementById(id)?.classList.remove('active-blue','active-accent','active-green','active-red'));
-  activeFilters.forEach(f => {
-    if (_filterMap[f]) document.getElementById(_filterMap[f][0])?.classList.add(_filterMap[f][1]);
+// ── Filas dos analistas (por fazenda) ──────────────────────────────────────
+function _fazendasParaAnalistaA() {
+  return FAZENDA_NAMES.filter(n => {
+    const an = FAZENDAS[n].analise;
+    return !(an.identificacao_ok && an.escoamento_ok);
   });
-  document.getElementById('mesFilter')?.classList.toggle('active', activeFilters.has('mes_atual'));
-  filterFazendas(document.getElementById('searchFaz').value);
 }
 
-function filterFazendas(q) {
-  const ql = q.toLowerCase();
-  let names = q
-    ? FAZENDA_NAMES.filter(n => {
-        const d = FAZENDAS[n];
-        return n.toLowerCase().includes(ql) || String(d.cod).includes(q);
-      })
-    : [...FAZENDA_NAMES];
+function _fazendasParaAnalistaB() {
+  return FAZENDA_NAMES.filter(n => {
+    const an = FAZENDAS[n].analise;
+    return an.identificacao_ok && an.escoamento_ok && !an.preparo_ok;
+  });
+}
 
-  if (activeFilters.has('a_fazer'))   names = names.filter(n => getFazStatus(n).status === 'A FAZER');
-  if (activeFilters.has('mes_atual')) names = names.filter(n => Object.values(FAZENDAS[n].talhoes).some(t => isSelMonth(t)));
-  if (activeFilters.has('18m'))       names = names.filter(n => Object.values(FAZENDAS[n].talhoes).some(t => is18m(t.estagio)));
-
-  currentNames = names;
-  renderFazendas(currentNames);
-  document.getElementById('sidebarTitle').textContent =
-    `Fazendas (${currentNames.length}${currentNames.length < FAZENDA_NAMES.length ? '/' + FAZENDA_NAMES.length : ''})`;
+function _etapaAtual(name) {
+  const an = FAZENDAS[name]?.analise;
+  if (!an) return '—';
+  if (!(an.identificacao_ok && an.escoamento_ok)) return 'Identificação/Escoamento';
+  if (!an.preparo_ok) return 'Projeto de Preparo';
+  return 'Concluído';
 }
 
 function selectFazenda(name) {
+  if (!FAZENDAS[name]) return;
   currentFaz = name;
   sessionStorage.setItem('gf_lastFaz', name);
-  cobertura = 'inteira';
-  document.getElementById('fazDropdown').classList.remove('open');
-  document.getElementById('searchFaz').value = '';
-
-  const badge = document.getElementById('fazSelectedBadge');
-  badge.textContent = name;
-  badge.style.display = 'block';
 
   document.getElementById('placeholder').style.display = 'none';
   document.getElementById('formArea').style.display = 'block';
 
   const d = FAZENDAS[name];
   document.getElementById('formFazTitle').textContent = name;
-  const frentes = [...new Set(Object.values(d.talhoes).map(t => t.frente).filter(Boolean))].sort((a,b)=>a-b);
-  document.getElementById('formFrenteTag').textContent = frentes.length ? 'Frente ' + frentes.join(', ') : '—';
   document.getElementById('formCodTag').textContent = 'COD ' + d.cod;
 
-  setCobertura('inteira');
-  renderTalhoes();
-  updateSubmitBtn();
-}
-
-document.addEventListener('click', e => {
-  if (!e.target.closest('.faz-selector')) {
-    document.getElementById('fazDropdown').classList.remove('open');
-  }
-});
-
-// ── Talhões ───────────────────────────────────────────────────────────────
-function renderTalhoes() {
-  const grid = document.getElementById('talhoesGrid');
-  if (!currentFaz) return;
-  const tals = Object.keys(FAZENDAS[currentFaz].talhoes).sort((a,b) => +a - +b);
-
-  grid.innerHTML = tals.map(t => {
-    const td = FAZENDAS[currentFaz].talhoes[t];
-    const badge18 = is18m(td.estagio)
-      ? '<span class="tal-chip-18m">18m</span>' : '';
-    return `<div class="tal-chip ${cobertura==='inteira'?'selected disabled':''}"
-                 data-tal="${t}" onclick="toggleTal(this)">${t}${badge18}</div>`;
-  }).join('');
-
-  updateTalCount();
-}
-
-function toggleTal(el) {
-  if (cobertura !== 'parcial') return;
-  el.classList.toggle('selected');
-  updateTalCount();
-  updateSubmitBtn();
-}
-
-function select18mTal() {
-  document.querySelectorAll('.tal-chip').forEach(c => {
-    if (c.querySelector('.tal-chip-18m')) c.classList.add('selected');
-  });
-  updateTalCount(); updateSubmitBtn();
-}
-
-function selectAllTal() {
-  document.querySelectorAll('.tal-chip').forEach(c => c.classList.add('selected'));
-  updateTalCount(); updateSubmitBtn();
-}
-
-function clearAllTal() {
-  document.querySelectorAll('.tal-chip').forEach(c => c.classList.remove('selected'));
-  updateTalCount(); updateSubmitBtn();
-}
-
-function selectRestantesTal() {
-  const registrados = new Set(
-    records.filter(r => r.fazenda === currentFaz).map(r => r.talhao)
-  );
-  document.querySelectorAll('.tal-chip').forEach(c => {
-    c.classList.toggle('selected', !registrados.has(+c.dataset.tal));
-  });
-  updateTalCount(); updateSubmitBtn();
-}
-
-function updateTalCount() {
-  const total = document.querySelectorAll('.tal-chip').length;
-  const sel   = cobertura === 'inteira' ? total : document.querySelectorAll('.tal-chip.selected').length;
-  const el    = document.getElementById('talSel');
-  el.textContent = sel > 0 ? `(${sel}/${total})` : `(0/${total})`;
-}
-
-function getSelectedTals() {
-  if (cobertura === 'inteira') {
-    if (!currentFaz || !FAZENDAS[currentFaz]) return [];
-    return Object.keys(FAZENDAS[currentFaz].talhoes).map(Number).sort((a,b)=>a-b);
-  }
-  return [...document.querySelectorAll('.tal-chip.selected')].map(c => +c.dataset.tal);
-}
-
-// ── Cobertura ─────────────────────────────────────────────────────────────
-function setCobertura(tipo) {
-  cobertura = tipo;
-  document.getElementById('btnInteira').classList.toggle('active', tipo==='inteira');
-  document.getElementById('btnParcial').classList.toggle('active', tipo==='parcial');
-  document.getElementById('talActions').style.display = tipo==='parcial' ? 'flex' : 'none';
-
-  document.querySelectorAll('.tal-chip').forEach(c => {
-    c.classList.toggle('selected', tipo==='inteira');
-    c.classList.toggle('disabled',  tipo==='inteira');
-  });
-  updateTalCount(); updateSubmitBtn();
-}
-
-// ── Submit ────────────────────────────────────────────────────────────────
-function updateSubmitBtn() {
-  const tipo   = document.getElementById('selTipo').value;
-  const ciclo  = document.getElementById('selCiclo').value;
-  const status = document.getElementById('selStatus').value;
-  const tals   = getSelectedTals();
-  const isSemLinhas = tipo === 'SEM LINHAS';
-  const ok = currentUser && currentFaz && tipo && (ciclo || isSemLinhas) && status && tals.length > 0;
-
-  document.getElementById('btnSubmit').disabled = !ok;
-
-  const info = document.getElementById('submitInfo');
-  if (!currentUser)   info.textContent = '⚠ selecione seu usuário';
-  else if (!tipo)     info.textContent = 'selecione o tipo de linha';
-  else if (!ciclo)    info.textContent = 'selecione o ciclo';
-  else if (!status)   info.textContent = 'selecione o status';
-  else if (!tals.length) info.textContent = 'selecione ao menos um talhão';
-  else {
-    const totalHa = tals.reduce((sum, t) => {
-      const td = FAZENDAS[currentFaz]?.talhoes[String(t)];
-      return sum + (td?.ha || 0);
-    }, 0);
-    info.textContent = `${tals.length} talhão(ões) — ${totalHa.toFixed(1)} ha`;
-  }
-}
-
-document.getElementById('selTipo').onchange = function() {
-  const isSemLinhas = this.value === 'SEM LINHAS';
-  const selStatus = document.getElementById('selStatus');
-  const selCiclo  = document.getElementById('selCiclo');
-  if (isSemLinhas) {
-    selStatus.value    = 'SEM LINHAS';
-    selStatus.disabled = true;
-    selCiclo.value     = '';
-    selCiclo.disabled  = true;
-  } else {
-    selStatus.disabled = false;
-    selCiclo.disabled  = false;
-  }
-  updateSubmitBtn();
-};
-document.getElementById('selCiclo').onchange  = updateSubmitBtn;
-document.getElementById('selStatus').onchange = updateSubmitBtn;
-
-function registrar() {
-  const fazData = FAZENDAS[currentFaz];
-  const tipo   = document.getElementById('selTipo').value;
-  const ciclo  = document.getElementById('selCiclo').value;
-  const status = document.getElementById('selStatus').value;
-  const tals   = getSelectedTals();
-  const now    = new Date();
-  const ts     = now.toLocaleString('pt-BR');
-
-  tals.forEach(tal => {
-    const td = fazData.talhoes[String(tal)];
-    records.push({
-      timestamp: ts,
-      usuario:   currentUser,
-      layer:     td?.layer || (fazData.cod * 1000 + tal),
-      fazenda:   currentFaz,
-      cod_faz:   fazData.cod,
-      talhao:    tal,
-      frente:    td?.frente || '—',
-      semana:    td?.semana || '—',
-      ha:        td?.ha || 0,
-      tipo,
-      ciclo,
-      status
-    });
-  });
-
-  localStorage.setItem(todayKey, JSON.stringify(records));
-  showToast(`${tals.length} talhão(ões) registrados`);
-  renderLog();
-  updateExportBar(); updateStats();
-  renderFazendas(currentNames);
+  renderPainelAnalise(name);
   renderPlano();
-  if (document.getElementById('viewDashboard').style.display !== 'none') renderDashboard();
-
-  // Reset form fields
-  document.getElementById('selTipo').value    = '';
-  document.getElementById('selCiclo').value   = '';
-  document.getElementById('selStatus').value  = '';
-  document.getElementById('selCiclo').disabled  = false;
-  document.getElementById('selStatus').disabled = false;
-  setCobertura('inteira');
-  updateSubmitBtn();
 }
 
-// ── Log ───────────────────────────────────────────────────────────────────
-function renderLog() {
-  const sec = document.getElementById('logSection');
-  const content = document.getElementById('logContent');
+function renderPainelAnalise(name) {
+  const d  = FAZENDAS[name];
+  const an = d.analise;
+  const perfis = getUserPerfis(currentUser);
+  const podeA = perfis.includes('analista_a');
+  const podeB = perfis.includes('analista_b');
+  const esc = name.replace(/'/g, "\\'");
 
-  if (records.length === 0) {
-    sec.classList.remove('visible');
-    content.innerHTML = '<div class="no-records">nenhum registro ainda</div>';
-    return;
+  let html = '';
+
+  if (podeA) {
+    html += `
+      <div class="analise-stage">
+        <div class="analise-stage-header">
+          <span>Identificação</span>
+          <span class="faz-tag faz-tag-${an.identificacao_ok ? 'green' : 'blue'}">${an.identificacao_ok ? 'OK' : 'Pendente'}</span>
+        </div>
+        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','identificacao',${!an.identificacao_ok})">
+          ${an.identificacao_ok ? 'Reabrir' : 'Marcar como OK'}
+        </button>
+      </div>
+      <div class="analise-stage">
+        <div class="analise-stage-header">
+          <span>Escoamento</span>
+          <span class="faz-tag faz-tag-${an.escoamento_ok ? 'green' : 'blue'}">${an.escoamento_ok ? 'OK' : 'Pendente'}</span>
+        </div>
+        <input type="file" id="fileEscoamento" accept=".pdf" style="font-size:11px">
+        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','escoamento',${!an.escoamento_ok},'fileEscoamento')">
+          ${an.escoamento_ok ? 'Reabrir' : 'Marcar como OK'}
+        </button>
+      </div>`;
   }
-  sec.classList.add('visible');
 
-  // Group by timestamp+fazenda for cleaner display
-  const rows = [...records].reverse().map((r, i) => {
-    const idx = records.length - 1 - i;
-    return `<tr>
-      <td>${r.timestamp}</td>
-      <td>${r.usuario}</td>
-      <td><strong>${r.fazenda}</strong></td>
-      <td style="font-family:monospace">${r.talhao}</td>
-      <td style="font-family:monospace">${r.layer}</td>
-      <td style="font-family:monospace">${(r.ha||0).toFixed(1)} ha</td>
-      <td>${r.tipo}</td>
-      <td>${r.ciclo}</td>
-      <td><span class="status-pill status-${r.status}">${r.status}</span></td>
-      <td style="white-space:nowrap">
-        <button class="btn-edit" data-idx="${idx}" onclick="openEditModal(+this.dataset.idx)" title="editar">✎</button>
-        <button class="btn-del"  data-idx="${idx}" onclick="delRecord(+this.dataset.idx)"  title="remover">✕</button>
-      </td>
-    </tr>`;
-  }).join('');
-
-  content.innerHTML = `<table>
-    <thead><tr>
-      <th>Horário</th><th>Usuário</th><th>Fazenda</th><th>Talhão</th>
-      <th>Layer</th><th>Área</th><th>Tipo</th><th>Ciclo</th><th>Status</th><th></th>
-    </tr></thead>
-    <tbody>${rows}</tbody>
-  </table>`;
-}
-
-function delRecord(idx) {
-  if (!confirm('Remover este registro?')) return;
-  records.splice(idx, 1);
-  localStorage.setItem(todayKey, JSON.stringify(records));
-  renderLog();
-  updateExportBar(); updateStats();
-}
-
-function scrollToLog() {
-  document.getElementById('logSection').scrollIntoView({behavior:'smooth'});
-}
-
-// ── Stats cards ──────────────────────────────────────────────────────────
-function updateStats() {
-  const registered = new Set(records.map(r => r.fazenda));
-  const regFaz  = registered.size;
-  const regTal  = records.length;
-  const ha      = totalHaRecords(records);
-
-  if (planFazendas.length > 0) {
-    // Modo plano: progresso relativo à lista do dia
-    const planTotal = planFazendas.length;
-    const planDone  = planFazendas.filter(f => registered.has(f) || planFazendasDone.has(f)).length;
-    const planTal   = planFazendas.reduce((s, f) => s + Object.keys(FAZENDAS[f]?.talhoes || {}).length, 0);
-    const planHaTotal = planFazendas.reduce((s, f) =>
-      s + Object.values(FAZENDAS[f]?.talhoes || {}).reduce((a, t) => a + (t.ha || 0), 0), 0);
-    const pct = planTotal > 0 ? Math.round(planDone / planTotal * 100) : 0;
-
-    document.getElementById('statFazendas').textContent  = planTotal;
-    document.getElementById('statTalhoes').textContent   = `${planTal} talhões — ${planHaTotal.toFixed(0)} ha`;
-    document.getElementById('statRegFazendas').textContent = regFaz;
-    document.getElementById('statRegTalhoes').textContent  = `${regTal} talhões`;
-    document.getElementById('statHa').textContent        = ha.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
-    document.getElementById('statPct').textContent       = pct + '%';
-    document.getElementById('statProgSub').textContent   = `${planDone} de ${planTotal} no plano`;
-    document.getElementById('statLabel1').textContent    = 'Plano da Semana';
-  } else {
-    // Sem plano: exibe totais da base
-    const totalFaz = FAZENDA_NAMES.length;
-    const totalTal = FAZENDA_NAMES.reduce((s, n) => s + Object.keys(FAZENDAS[n].talhoes).length, 0);
-    const conclFaz = FAZENDA_NAMES.filter(n => {
-      const tals = Object.values(FAZENDAS[n].talhoes);
-      return tals.length > 0 && tals.every(t => t.exp === 'CONCLUIDO' || t.exp === 'SEM LINHAS');
-    }).length;
-    const pct = totalFaz > 0 ? Math.round(conclFaz / totalFaz * 100) : 0;
-
-    document.getElementById('statFazendas').textContent  = totalFaz.toLocaleString('pt-BR');
-    document.getElementById('statTalhoes').textContent   = `${totalTal.toLocaleString('pt-BR')} talhões`;
-    document.getElementById('statRegFazendas').textContent = regFaz;
-    document.getElementById('statRegTalhoes').textContent  = `${regTal} talhões`;
-    document.getElementById('statHa').textContent        = ha.toLocaleString('pt-BR', {minimumFractionDigits:1, maximumFractionDigits:1});
-    document.getElementById('statPct').textContent       = pct + '%';
-    document.getElementById('statProgSub').textContent   = `${conclFaz} de ${totalFaz} concluídas`;
-    document.getElementById('statLabel1').textContent    = 'Base ICOL';
+  if (podeB) {
+    if (!(an.identificacao_ok && an.escoamento_ok)) {
+      html += `<div class="analise-stage muted">Aguardando identificação e escoamento (Analista A) para liberar o projeto de preparo.</div>`;
+    } else {
+      html += `
+      <div class="analise-stage">
+        <div class="analise-stage-header">
+          <span>Projeto de Preparo</span>
+          <span class="faz-tag faz-tag-${an.preparo_ok ? 'green' : 'blue'}">${an.preparo_ok ? 'OK' : 'Pendente'}</span>
+        </div>
+        <input type="file" id="filePreparo" accept=".dwg,.zip" style="font-size:11px">
+        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','preparo',${!an.preparo_ok},'filePreparo')">
+          ${an.preparo_ok ? 'Reabrir' : 'Marcar como OK'}
+        </button>
+      </div>`;
+    }
   }
+
+  if (!html) html = '<div class="analise-stage muted">Seu usuário não tem perfil de analista (A ou B) configurado.</div>';
+
+  document.getElementById('formAnaliseBody').innerHTML =
+    html + `<div id="analiseLog" style="font-size:11px;line-height:1.8;margin-top:10px"></div>`;
 }
 
-function totalHaRecords(recs) {
-  return recs.reduce((s, r) => s + (r.ha || 0), 0);
-}
+async function salvarEtapaAnalise(name, etapa, novoValor, fileInputId) {
+  const d = FAZENDAS[name];
+  if (!d) return;
+  const log = document.getElementById('analiseLog');
+  const setLog = msg => { if (log) log.innerHTML = msg; };
 
-function updateExportBar() {
-  const n  = records.length;
-  const ha = totalHaRecords(records);
-  document.getElementById('exportInfo').textContent =
-    n > 0 ? `${n} registro(s) — ${ha.toFixed(1)} ha` : '0 registros';
-  document.getElementById('btnExport').disabled = n === 0;
-  document.getElementById('btnClear').style.display = n > 0 ? 'inline-block' : 'none';
-}
-
-function _exportarXLSX() {
-  if (!records.length || !currentUser) return;
-  const hoje = new Date().toISOString().slice(0,10);
-  const wsData = [
-    ['TIMESTAMP','USUARIO','LAYER','COD_FAZ','FAZENDA','TALHAO','FRENTE','SEMANA','AREA_HA','TIPO_LINHA','CICLO','STATUS'],
-    ...records.map(r => [
-      r.timestamp, r.usuario, r.layer, r.cod_faz,
-      r.fazenda, r.talhao, r.frente, r.semana,
-      r.ha || 0, r.tipo, r.ciclo, r.status
-    ])
-  ];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols'] = [18,12,12,10,28,8,8,8,9,18,8,14].map(w => ({wch:w}));
-  XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-  XLSX.writeFile(wb, `export_frentes_${currentUser}_${hoje}.xlsx`);
-  showToast(`${records.length} registros baixados — mova para exports/ e rode CONSOLIDAR.bat`);
-}
-
-function exportar() { _exportarXLSX(); exportado = true; updateExportBar(); updateStats(); }
-
-// ── Consolidar direto no Supabase ─────────────────────────────────────────
-function _abrirConsolidarModal(titulo, html, mostrarFallback) {
-  document.getElementById('consolidarTitle').textContent = titulo;
-  document.getElementById('consolidarBody').innerHTML   = html;
-  document.getElementById('consolidarActions').style.display = '';
-  document.getElementById('btnConsolidarFallback').style.display = mostrarFallback ? '' : 'none';
-  document.getElementById('btnFecharConsolidar').disabled = false;
-  const el = document.getElementById('consolidarOverlay');
-  el.style.display = '';
-  el.classList.add('open');
-}
-
-function fecharConsolidar() {
-  const el = document.getElementById('consolidarOverlay');
-  el.classList.remove('open');
-  el.style.display = 'none';
-  if (_pendingReload) { _pendingReload = false; location.reload(); }
-}
-
-function _baixarFallback() {
-  exportar();
-  document.getElementById('btnConsolidarLimpar').style.display = '';
-}
-
-function _limparFallback() {
-  if (!confirm(`Limpar os ${records.length} registros do dia? Faça isso apenas após o CONSOLIDAR.bat ter sido executado com sucesso.`)) return;
-  records = [];
-  exportado = false;
-  localStorage.setItem(todayKey, JSON.stringify(records));
-  renderLog(); updateExportBar(); updateStats();
-  renderFazendas(currentNames);
-  renderPlano();
-  fecharConsolidar();
-  _pendingReload = true;
-  location.reload();
-}
-
-function _setConsolidarStatus(msg) {
-  document.getElementById('consolidarBody').innerHTML =
-    `<div style="color:var(--muted);font-size:13px">${msg}</div>`;
-}
-
-
-function _parseTimestampPtBr(s) {
-  const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{4}),?\s*(\d{2}):(\d{2}):(\d{2})/);
-  if (!m) return new Date().toISOString();
-  const [, d, mo, y, h, mi, se] = m;
-  return new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}`).toISOString();
-}
-
-async function consolidar() {
-  if (records.length === 0) return;
-  if (!currentUser) { openUserModal(); return; }
-
-  // Abre modal aguardando
-  document.getElementById('consolidarTitle').textContent = 'Consolidando...';
-  document.getElementById('consolidarBody').innerHTML =
-    '<div style="color:var(--muted);font-size:13px">Aguarde...</div>';
-  document.getElementById('consolidarActions').style.display = 'none';
-  const el = document.getElementById('consolidarOverlay');
-  el.style.display = '';
-  el.classList.add('open');
+  const fileInput = fileInputId ? document.getElementById(fileInputId) : null;
+  const file = fileInput?.files?.[0];
 
   try {
-    // Mantém apenas o último registro de cada talhão
-    const porLayer = new Map();
-    for (const r of records) porLayer.set(r.layer, r);
-    const recsUnicos = [...porLayer.values()];
+    if (file) {
+      setLog('Enviando arquivo...');
+      await _releaseUploadAsset(String(d.cod), name, file);
+    }
 
-    // ── 1. Atualiza a tabela programacao ──────────────────────────────
-    _setConsolidarStatus('Atualizando programação...');
+    setLog('Salvando...');
     const agora = new Date().toISOString();
-    await Promise.all(recsUnicos.map(async r => {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/programacao?layer=eq.${r.layer}`, {
-        method: 'PATCH',
-        headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-        body: JSON.stringify({ status: r.status, tipo_linha: r.tipo, ciclo: r.ciclo, updated_at: agora }),
-      });
-      if (!res.ok) throw new Error(`programacao (layer ${r.layer}): ${res.status} ${await res.text()}`);
-    }));
-
-    // ── 2. Insere no log de exportações ───────────────────────────────
-    _setConsolidarStatus('Registrando histórico...');
-    const logRows = recsUnicos.map(r => ({
-      data_consolidacao: agora,
-      registrado_em: _parseTimestampPtBr(r.timestamp),
-      usuario: r.usuario, layer: r.layer, fazenda: r.fazenda, talhao: r.talhao,
-      tipo_linha: r.tipo, ciclo: r.ciclo, status: r.status,
-    }));
-    const logRes = await fetch(`${SUPABASE_URL}/rest/v1/log_exportacoes`, {
+    const payload = {
+      cod_faz: d.cod, fazenda: name,
+      [`${etapa}_ok`]: novoValor,
+      [`${etapa}_usuario`]: currentUser || '',
+      [`${etapa}_data`]: agora,
+    };
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/fazenda_analise`, {
       method: 'POST',
-      headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-      body: JSON.stringify(logRows),
+      headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify([payload]),
     });
-    if (!logRes.ok) throw new Error(`log_exportacoes: ${logRes.status} ${await logRes.text()}`);
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
 
-    // ── 3. Atualiza ha acumulado do usuário ───────────────────────────
-    _setConsolidarStatus('Atualizando estatísticas do usuário...');
-    const haDelta = recsUnicos.reduce((s, r) => s + (r.ha || 0), 0);
-    const userRes = await fetch(`${SUPABASE_URL}/rest/v1/usuarios?nome=eq.${encodeURIComponent(currentUser)}&select=ha`,
-      { headers: _sbHeaders() });
-    const userRows = userRes.ok ? await userRes.json() : [];
-    const haAtual  = userRows[0]?.ha || 0;
-    const haNovo   = Math.round((haAtual + haDelta) * 100) / 100;
-    await fetch(`${SUPABASE_URL}/rest/v1/usuarios?nome=eq.${encodeURIComponent(currentUser)}`, {
-      method: 'PATCH',
-      headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
-      body: JSON.stringify({ ha: haNovo }),
-    });
-    USUARIOS_HA[currentUser] = haNovo;
-
-    // ── 4. Atualiza dados locais (sem precisar recarregar) ────────────
-    for (const r of recsUnicos) {
-      const td = FAZENDAS[r.fazenda]?.talhoes?.[String(r.talhao)];
-      if (td) { td.exp = r.status; td.tipo = r.tipo; td.ciclo = r.ciclo; }
-    }
-
-    const ha = totalHaRecords(records).toFixed(1);
-
-    // Monta a lista de arquivos obrigatórios: 4 por fazenda (Exp1L/Exp2L × dwg/zip)
-    const fazendasUnicas = [...new Set(recsUnicos.map(r => r.fazenda))];
-    _arquivosEsperados = [];
-    _arquivosSelecionados = [];
-    for (const faz of fazendasUnicas) {
-      const cod = String(FAZENDAS[faz]?.cod ?? '');
-        for (const {suf, ext} of [{suf:'Rev0',ext:'dwg'},{suf:'Exp0',ext:'zip'},{suf:'Rev0',ext:'pdf'}]) {
-          _arquivosEsperados.push({ cod, faz, suf, ext, nome: `${cod}_*_${suf}.${ext}`, ok: false, matched: null });
-        }
-    }
-
-    _abrirConsolidarModal('Consolidado com sucesso!', `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--green)">${recsUnicos.length}</div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Registros</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:10px;text-align:center">
-          <div style="font-size:22px;font-weight:700;color:var(--accent)">${ha} ha</div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Área total</div>
-        </div>
-      </div>
-      <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px">
-        <div style="font-size:12px;font-weight:700;margin-bottom:6px">Arquivos de projeto obrigatórios (.dwg/.zip/.pdf)</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">
-          Selecione os ${_arquivosEsperados.length} arquivo(s) correspondentes aos itens abaixo (pode selecionar vários de uma vez), para liberar o envio e fechar.
-          O nome deve seguir o padrão <code>{COD_FAZ}_{NOME}_{Exp1L|Exp2L}.{dwg|zip}</code> (separado por "_") —
-          o nome da fazenda no meio pode variar, o sistema identifica pelo código e pelo sufixo.
-        </div>
-        <ul id="checklistArquivos" style="list-style:none;padding:0;margin:0 0 8px;font-size:11px;line-height:1.9">
-          ${_arquivosEsperados.map(a => `<li data-nome="${a.nome}">⬜ ${a.nome}</li>`).join('')}
-        </ul>
-        <input type="file" id="inputArquivosProjeto" accept=".dwg,.zip,.pdf" multiple onchange="_adicionarArquivoProjeto(this)">
-        <button class="btn-modal-cancel" style="margin-left:8px" id="btnEnviarArquivos" onclick="enviarArquivosProjeto()" disabled>Enviar arquivos</button>
-        <div id="uploadArquivosLog" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
-      </div>`, false);
-    document.getElementById('btnFecharConsolidar').disabled = true;
-
-    records = [];
-    exportado = true;
-    _pendingReload = true;
-    localStorage.removeItem(todayKey);
-    renderLog(); updateExportBar(); updateStats();
-    renderFazendas(currentNames);
-    renderPlano(); renderDashboard();
-
+    showToast(`${name}: ${etapa} ${novoValor ? 'marcado como OK' : 'reaberto'}.`);
+    await carregarDadosSupabase();
+    renderPlano();
+    renderDashboard();
+    if (FAZENDAS[name]) selectFazenda(name);
   } catch (e) {
-    _abrirConsolidarModal('Erro na consolidação',
-      `<p style="color:var(--red);font-size:13px;margin-bottom:10px">${e.message}</p>
-       <p style="font-size:12px;color:var(--muted)">Você pode baixar o XLSX como backup e tentar novamente mais tarde.</p>`,
-      true);
+    setLog(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
 }
-
 
 // ── Upload de arquivos de projeto (.dwg/.zip) para Releases do GitHub ─────
 // Via proxy (Cloudflare Worker) — ver RELEASE_PROXY_URL e cloudflare-worker/release-proxy.js.
@@ -2426,159 +1731,24 @@ async function _releaseUploadAsset(tag, name, file) {
   return res.json();
 }
 
-function _logArquivos(msg) {
-  const el = document.getElementById('uploadArquivosLog');
-  if (el) el.insertAdjacentHTML('beforeend', `<div>${msg}</div>`);
-}
-
-function _adicionarArquivoProjeto(input) {
-  const files = [...input.files];
-  input.value = '';
-  if (!files.length) return;
-
-  for (const file of files) {
-    const m = file.name.match(RE_ARQ_PROJETO);
-    const item = m && _arquivosEsperados.find(a =>
-      a.cod === m[1] && a.suf.toLowerCase() === m[2].toLowerCase() && a.ext.toLowerCase() === m[3].toLowerCase());
-
-    if (!item) {
-      _logArquivos(`<span style="color:var(--red)">Arquivo fora do padrão esperado (ignorado): ${file.name}</span>`);
-      continue;
-    }
-
-    // Substitui o arquivo anterior do mesmo item, se houver
-    _arquivosSelecionados = _arquivosSelecionados.filter(f => {
-      const mm = f.name.match(RE_ARQ_PROJETO);
-      return !(mm[1] === item.cod && mm[2].toLowerCase() === item.suf.toLowerCase() && mm[3].toLowerCase() === item.ext.toLowerCase());
-    });
-    _arquivosSelecionados.push(file);
-  }
-  _validarArquivosProjeto();
-}
-
-function _validarArquivosProjeto() {
-  let todosOk = true;
-  for (const item of _arquivosEsperados) {
-    const match = _arquivosSelecionados.find(f => {
-      const m = f.name.match(RE_ARQ_PROJETO);
-      return m && m[1] === item.cod && m[2].toLowerCase() === item.suf.toLowerCase() && m[3].toLowerCase() === item.ext.toLowerCase();
-    });
-    item.ok = !!match;
-    item.matched = match ? match.name : null;
-    if (!item.ok) todosOk = false;
-  }
-  document.querySelectorAll('#checklistArquivos li').forEach(li => {
-    const item = _arquivosEsperados.find(a => a.nome === li.dataset.nome);
-    li.innerHTML = `${item.ok ? '✅' : '⬜'} ${item.nome}` +
-      (item.matched ? ` <span style="color:var(--muted)">→ ${item.matched}</span>` : '');
-    li.style.color = item.ok ? 'var(--green)' : '';
-  });
-
-  document.getElementById('btnEnviarArquivos').disabled = !todosOk;
-}
-
-async function enviarArquivosProjeto() {
-  const files = _arquivosSelecionados;
-  const log = document.getElementById('uploadArquivosLog');
-  if (log) log.innerHTML = '';
-
-  const btn = document.getElementById('btnEnviarArquivos');
-  btn.disabled = true;
-
-  // Agrupa arquivos por codFaz → release (um release por fazenda, com todas as frentes)
-  const grupos = {};
-  for (const file of files) {
-    const m = file.name.match(RE_ARQ_PROJETO);
-    if (!m) continue;
-    const [, codFaz] = m;
-    const tag = codFaz;
-    const name = codFaz;
-    (grupos[tag] ||= { name, files: [] }).files.push(file);
-  }
-
-  let erro = false;
-  for (const [tag, grupo] of Object.entries(grupos)) {
-    try {
-      for (const file of grupo.files) {
-        _logArquivos(`Enviando ${file.name}...`);
-        await _releaseUploadAsset(tag, grupo.name, file);
-        _logArquivos(`<span style="color:var(--green)">✓ ${file.name} enviado</span>`);
-      }
-    } catch (e) {
-      erro = true;
-      _logArquivos(`<span style="color:var(--red)">✗ ${tag}: ${e.message}</span>`);
-    }
-  }
-
-  if (!erro) {
-    _logArquivos('<span style="color:var(--green);font-weight:700">Todos os arquivos enviados com sucesso!</span>');
-    document.getElementById('btnFecharConsolidar').disabled = false;
-  } else {
-    btn.disabled = false;
-  }
-}
-
-function openClearConfirm() {
-  const n  = records.length;
-  const ha = totalHaRecords(records);
-  document.getElementById('clearConfirmMsg').textContent =
-    `Apagar ${n} registro(s) de hoje (${ha.toFixed(1)} ha)?`;
-  document.getElementById('clearConfirmOverlay').classList.add('open');
-}
-function closeClearConfirm() {
-  document.getElementById('clearConfirmOverlay').classList.remove('open');
-}
-function confirmLimpar() {
-  closeClearConfirm();
-  records = [];
-  exportado = false;
-  localStorage.setItem(todayKey, JSON.stringify(records));
-  renderLog();
-  updateExportBar(); updateStats();
-  renderFazendas(currentNames);
-  renderPlano();
-  showToast('Registros limpos.');
-}
-
-function limparRegistros() {
-  openClearConfirm();
-}
-
-// ── Edit modal ────────────────────────────────────────────────────────────
-let editIdx = -1;
-function openEditModal(idx) {
-  editIdx = idx;
-  const r = records[idx];
-  document.getElementById('editTipo').value   = r.tipo;
-  document.getElementById('editCiclo').value  = r.ciclo;
-  document.getElementById('editStatus').value = r.status;
-  document.getElementById('editOverlay').classList.add('open');
-}
-function closeEditModal() {
-  document.getElementById('editOverlay').classList.remove('open');
-}
-function saveEdit() {
-  if (editIdx < 0) return;
-  records[editIdx].tipo   = document.getElementById('editTipo').value;
-  records[editIdx].ciclo  = document.getElementById('editCiclo').value;
-  records[editIdx].status = document.getElementById('editStatus').value;
-  localStorage.setItem(todayKey, JSON.stringify(records));
-  closeEditModal();
-  renderLog();
-  exportado = false;
-}
-
 // ── User management ───────────────────────────────────────────────────────
 
+// Compatibilidade: configs antigas usavam o perfil "preenchimento" (pré-analistas A/B).
+function _expandPerfisLegado(perfis) {
+  if (!perfis.includes('preenchimento')) return perfis;
+  return [...new Set([...perfis.filter(p => p !== 'preenchimento'), 'analista_a', 'analista_b'])];
+}
+
 // Config local (espelho editável em sessão; fonte da verdade = USUARIOS_CONFIG injetado pelo Python)
-let adminConfig = USUARIOS_CONFIG.length
-  ? USUARIOS_CONFIG.map(u => ({ nome: u.nome.toLowerCase(), perfis: u.perfis || ['preenchimento','dashboard'] }))
-  : JSON.parse(localStorage.getItem('gf_users_config') || '[]');
+let adminConfig = (USUARIOS_CONFIG.length
+  ? USUARIOS_CONFIG.map(u => ({ nome: u.nome.toLowerCase(), perfis: u.perfis || ['analista_a','analista_b','dashboard'] }))
+  : JSON.parse(localStorage.getItem('gf_users_config') || '[]')
+).map(u => ({ ...u, perfis: _expandPerfisLegado(u.perfis) }));
 
 function getUserPerfis(nome) {
-  if (!adminConfig.length) return ['preenchimento', 'dashboard'];
+  if (!adminConfig.length) return ['analista_a', 'analista_b', 'dashboard'];
   const u = adminConfig.find(u => u.nome === nome);
-  return u ? u.perfis : ['preenchimento', 'dashboard'];
+  return u ? u.perfis : ['analista_a', 'analista_b', 'dashboard'];
 }
 
 function getSelectableUsers() {
@@ -2589,19 +1759,19 @@ function getSelectableUsers() {
 
 function applyUserPermissions(nome) {
   const perfis = getUserPerfis(nome);
-  const hasDash  = perfis.includes('dashboard');
-  const hasPreench = perfis.includes('preenchimento');
-  document.getElementById('tabDash').style.display     = hasDash    ? '' : 'none';
-  document.getElementById('tabConsulta').style.display = hasDash    ? '' : 'none';
-  document.getElementById('tabWork').style.display     = hasPreench ? '' : 'none';
+  const hasDash     = perfis.includes('dashboard');
+  const hasAnalista = perfis.includes('analista_a') || perfis.includes('analista_b');
+  document.getElementById('tabDash').style.display     = hasDash     ? '' : 'none';
+  document.getElementById('tabConsulta').style.display = hasDash     ? '' : 'none';
+  document.getElementById('tabWork').style.display     = hasAnalista ? '' : 'none';
   const vd = document.getElementById('viewDashboard').style.display;
   const vc = document.getElementById('viewConsulta').style.display;
   const currentView = vd !== 'none' ? 'dashboard'
                     : vc !== 'none' ? 'consulta'
                     : 'preenchimento';
   if ((currentView === 'dashboard' || currentView === 'consulta') && !hasDash) {
-    setView(hasPreench ? 'preenchimento' : 'dashboard');
-  } else if (currentView === 'preenchimento' && !hasPreench) {
+    setView(hasAnalista ? 'preenchimento' : 'dashboard');
+  } else if (currentView === 'preenchimento' && !hasAnalista) {
     setView(hasDash ? 'dashboard' : 'preenchimento');
   }
 }
@@ -2615,8 +1785,9 @@ function renderUserChips() {
   }
   container.innerHTML = lista.map(u => {
     const perfis = getUserPerfis(u);
-    const badges = (perfis.includes('preenchimento') ? '<span class="perfil-badge p">P</span>' : '') +
-                   (perfis.includes('dashboard')     ? '<span class="perfil-badge d">D</span>' : '');
+    const badges = (perfis.includes('analista_a') ? '<span class="perfil-badge p">A</span>' : '') +
+                   (perfis.includes('analista_b') ? '<span class="perfil-badge p">B</span>' : '') +
+                   (perfis.includes('dashboard')  ? '<span class="perfil-badge d">D</span>' : '');
     return `<div class="user-chip${u === currentUser ? ' active' : ''}" data-nome="${u}">
       <span>${u}${badges}</span>
     </div>`;
@@ -2627,15 +1798,12 @@ function renderUserChips() {
 }
 
 function selectUserChip(name) {
-  if (name !== currentUser && records.length > 0 && !exportado) {
-    if (!confirm(`Há ${records.length} registro(s) não exportados de "${currentUser}".\nTrocar para "${name}" agora? Os registros continuam salvos localmente.`)) return;
-  }
   closeUserModal();
   currentUser = name;
   localStorage.setItem('gf_user', name);
   updateUserBadge();
-  updateSubmitBtn();
   applyUserPermissions(name);
+  if (currentFaz) selectFazenda(currentFaz);
 }
 
 function openUserModal() {
@@ -2680,12 +1848,16 @@ function renderAdminList() {
     return;
   }
   el.innerHTML = adminConfig.map((u, idx) => {
-    const hasP = u.perfis.includes('preenchimento');
+    const hasA = u.perfis.includes('analista_a');
+    const hasB = u.perfis.includes('analista_b');
     const hasD = u.perfis.includes('dashboard');
     return `<div class="admin-user-row">
       <span class="admin-user-name">${u.nome}</span>
       <label class="admin-perfil-check">
-        <input type="checkbox" ${hasP ? 'checked' : ''} onchange="adminTogglePerfil(${idx},'preenchimento',this.checked)"> Preencher
+        <input type="checkbox" ${hasA ? 'checked' : ''} onchange="adminTogglePerfil(${idx},'analista_a',this.checked)"> Analista A
+      </label>
+      <label class="admin-perfil-check">
+        <input type="checkbox" ${hasB ? 'checked' : ''} onchange="adminTogglePerfil(${idx},'analista_b',this.checked)"> Analista B
       </label>
       <label class="admin-perfil-check">
         <input type="checkbox" ${hasD ? 'checked' : ''} onchange="adminTogglePerfil(${idx},'dashboard',this.checked)"> Dashboard
@@ -2719,8 +1891,9 @@ function adminAddUser() {
     alert(`Usuário "${nome}" já existe.`); return;
   }
   const perfis = [];
-  if (document.getElementById('chkPreenchimento').checked) perfis.push('preenchimento');
-  if (document.getElementById('chkDashboard').checked)     perfis.push('dashboard');
+  if (document.getElementById('chkAnalistaA').checked) perfis.push('analista_a');
+  if (document.getElementById('chkAnalistaB').checked) perfis.push('analista_b');
+  if (document.getElementById('chkDashboard').checked) perfis.push('dashboard');
   if (!perfis.length) { alert('Selecione pelo menos um perfil.'); return; }
   adminConfig.push({ nome, perfis });
   localStorage.setItem('gf_users_config', JSON.stringify(adminConfig));
@@ -2747,17 +1920,22 @@ function updateUserBadge() {
 // ── Navegação entre telas ─────────────────────────────────────────────────
 function setView(name) {
   const perfis = getUserPerfis(currentUser);
-  const viewPerfil = name === 'consulta' ? 'dashboard' : name;
-  if (currentUser && !perfis.includes(viewPerfil)) return;
+  let allowed = true;
+  if (currentUser) {
+    if (name === 'preenchimento') allowed = perfis.includes('analista_a') || perfis.includes('analista_b');
+    else if (name === 'consulta') allowed = perfis.includes('dashboard');
+    else                          allowed = perfis.includes(name);
+  }
+  if (!allowed) return;
   document.getElementById('viewDashboard').style.display     = name === 'dashboard'    ? '' : 'none';
   document.getElementById('viewPreenchimento').style.display = name === 'preenchimento' ? '' : 'none';
   document.getElementById('viewConsulta').style.display      = name === 'consulta'     ? '' : 'none';
-  document.getElementById('exportBar').style.display         = name === 'preenchimento' ? '' : 'none';
   document.getElementById('tabDash').classList.toggle('active', name === 'dashboard');
   document.getElementById('tabWork').classList.toggle('active', name === 'preenchimento');
   document.getElementById('tabConsulta').classList.toggle('active', name === 'consulta');
-  if (name === 'dashboard') renderDashboard();
-  if (name === 'consulta')  { populateConsultaFilters(); renderConsulta(); }
+  if (name === 'dashboard')      renderDashboard();
+  if (name === 'preenchimento')  renderPlano();
+  if (name === 'consulta')       { populateConsultaFilters(); renderConsulta(); }
 }
 
 // ── Status por fazenda ────────────────────────────────────────────────────
@@ -2765,7 +1943,7 @@ function getFazStatus(name) {
   const tals = Object.values(FAZENDAS[name]?.talhoes || {});
   if (!tals.length) return { status: '—', cls: 'muted', ciclo: '—' };
   const total  = tals.length;
-  const done   = tals.filter(t => t.exp === 'CONCLUIDO' || t.exp === 'SEM LINHAS' || t.tipo === 'SEM LINHAS').length;
+  const done   = tals.filter(t => t.done).length;
   const ciclo  = tals.find(t => t.ciclo)?.ciclo || '—';
   let status, cls;
   if (done === total)  { status = 'CONCLUÍDO'; cls = 'green'; }
@@ -2773,33 +1951,19 @@ function getFazStatus(name) {
   return { status, cls, ciclo };
 }
 
-// ── Plano da Semana ───────────────────────────────────────────────────────
-function _getWeekKey() {
-  const d = new Date();
-  const dow = d.getDay(); // 0=Dom, 1=Seg, ..., 6=Sab
-  const toMonday = (dow === 0) ? -6 : 1 - dow;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() + toMonday);
-  return monday.toISOString().slice(0, 10);
-}
-const planKey     = 'gf_plan_'      + _getWeekKey();
-const planDoneKey = 'gf_plan_done_' + _getWeekKey();
+// ── Lista de pendências (auto, por estágio) + fixados manualmente ─────────
+const planKey = 'gf_plan_fixados';
 
 let planFazendas = [];
 try { planFazendas = JSON.parse(localStorage.getItem(planKey) || '[]'); } catch(e) { planFazendas = []; }
 
-let planFazendasDone = new Set();
-try { planFazendasDone = new Set(JSON.parse(localStorage.getItem(planDoneKey) || '[]')); } catch(e) {}
-
-function savePlan()     { localStorage.setItem(planKey,     JSON.stringify(planFazendas)); }
-function savePlanDone() { localStorage.setItem(planDoneKey, JSON.stringify([...planFazendasDone])); }
+function savePlan() { localStorage.setItem(planKey, JSON.stringify(planFazendas)); }
 
 function addToPlano(name) {
   if (planFazendas.includes(name)) return;
   planFazendas.push(name);
   savePlan();
   renderPlano();
-  updateStats();
   document.getElementById('planSearch').value = '';
   document.getElementById('planDropdown').classList.remove('open');
 }
@@ -2808,46 +1972,50 @@ function removeFromPlano(name) {
   planFazendas = planFazendas.filter(f => f !== name);
   savePlan();
   renderPlano();
-  updateStats();
 }
 
 function limparPlano() {
   if (!planFazendas.length) return;
-  if (!confirm('Limpar o plano do dia?')) return;
+  if (!confirm('Remover todas as fazendas fixadas?')) return;
   planFazendas = [];
   savePlan();
   renderPlano();
-  updateStats();
 }
 
 function renderPlano() {
-  const registered = new Set(records.map(r => r.fazenda));
-  const done = planFazendas.filter(f => registered.has(f) || planFazendasDone.has(f)).length;
-  document.getElementById('planCount').textContent = `${done}/${planFazendas.length}`;
+  const perfis = getUserPerfis(currentUser);
+  const podeA = perfis.includes('analista_a');
+  const podeB = perfis.includes('analista_b');
 
-  if (!planFazendas.length) {
-    document.getElementById('planList').innerHTML = '<div class="plan-empty">Nenhuma fazenda no plano</div>';
+  let queue = [];
+  if (podeA) queue = queue.concat(_fazendasParaAnalistaA());
+  if (podeB) queue = queue.concat(_fazendasParaAnalistaB());
+  queue = [...new Set(queue)].sort();
+
+  const pinned   = planFazendas.filter(n => FAZENDAS[n]);
+  const queueOnly = queue.filter(n => !pinned.includes(n));
+  const all = [...pinned, ...queueOnly];
+
+  document.getElementById('planCount').textContent = String(all.length);
+
+  if (!all.length) {
+    document.getElementById('planList').innerHTML = '<div class="plan-empty">Nada pendente para você 🎉</div>';
     return;
   }
-  document.getElementById('planList').innerHTML = planFazendas.map(name => {
-    const isDoneRec  = registered.has(name);
-    const isDoneMark = planFazendasDone.has(name);
-    const isDone     = isDoneRec || isDoneMark;
-    const { status, cls, ciclo } = getFazStatus(name);
+  document.getElementById('planList').innerHTML = all.map(name => {
+    const isPinned = pinned.includes(name);
     const nTal = Object.keys(FAZENDAS[name]?.talhoes || {}).length;
     const esc = name.replace(/'/g, "\\'");
-    const checkIcon = isDoneRec ? '&#9745;' : isDoneMark ? '&#9733;' : '&#9744;';
-    return `<div class="plan-item${isDone ? ' done' : ''}" onclick="goToFazenda('${esc}')" oncontextmenu="openPlanCtxMenu(event,'${esc}')">
-      <span class="plan-check" title="${isDoneMark && !isDoneRec ? 'Marcada manualmente' : ''}">${checkIcon}</span>
+    return `<div class="plan-item${name === currentFaz ? ' done' : ''}" onclick="selectFazenda('${esc}')" oncontextmenu="openPlanCtxMenu(event,'${esc}')">
+      <span class="plan-check" title="${isPinned ? 'Fixada manualmente' : ''}">${isPinned ? '📌' : '○'}</span>
       <div class="plan-item-info">
         <div class="plan-item-name">${name}</div>
         <div class="plan-item-meta">
-          <span class="faz-tag faz-tag-${cls}">${status}</span>
-          <span class="faz-tag faz-tag-muted">${ciclo}</span>
+          <span class="faz-tag faz-tag-blue">${_etapaAtual(name)}</span>
           <span style="color:var(--muted)">${nTal} tal.</span>
         </div>
       </div>
-      <button class="plan-item-del" onclick="event.stopPropagation();removeFromPlano('${esc}')">✕</button>
+      ${isPinned ? `<button class="plan-item-del" onclick="event.stopPropagation();removeFromPlano('${esc}')">✕</button>` : ''}
     </div>`;
   }).join('');
 }
@@ -2864,11 +2032,6 @@ function openPlanCtxMenu(e, name) {
   e.preventDefault();
   e.stopPropagation();
   _planCtxFaz = name;
-  const isDone = planFazendasDone.has(name);
-  const item = document.getElementById('planCtxDoneItem');
-  if (item) item.innerHTML = isDone
-    ? '&#9744; Desmarcar como feita'
-    : '&#9733; Marcar como feita';
   const menu = document.getElementById('planCtxMenu');
   menu.style.left = Math.min(e.clientX, window.innerWidth  - 210) + 'px';
   menu.style.top  = Math.min(e.clientY, window.innerHeight - 110) + 'px';
@@ -2888,22 +2051,6 @@ function planCtxAbrir() {
 function planCtxRemover() {
   const n = _planCtxFaz; closePlanCtxMenu();
   if (n) removeFromPlano(n);
-}
-
-function planCtxConcluir() {
-  const n = _planCtxFaz; closePlanCtxMenu();
-  if (!n) return;
-
-  if (planFazendasDone.has(n)) {
-    planFazendasDone.delete(n);
-    showToast(`"${n}" desmarcada.`);
-  } else {
-    planFazendasDone.add(n);
-    showToast(`"${n}" marcada como feita. ★`);
-  }
-  savePlanDone();
-  renderPlano();
-  updateStats();
 }
 
 function renderPlanDropdown(q) {
@@ -2937,12 +2084,12 @@ function debouncedRenderConsulta() {
   _consultaDebounceTimer = setTimeout(renderConsulta, 200);
 }
 function populateConsultaFilters() {
-  const meses = new Set(), frentes = new Set();
+  const meses = new Set(), equipes = new Set();
   FAZENDA_NAMES.forEach(n => {
     Object.values(FAZENDAS[n].talhoes).forEach(t => {
       const ym = talYM(t);
       if (ym) meses.add(ym);
-      if (t.frente) frentes.add(t.frente);
+      if (t.equipe) equipes.add(t.equipe);
     });
   });
   const selMes = document.getElementById('cFiltroMes');
@@ -2955,16 +2102,16 @@ function populateConsultaFilters() {
     }).join('');
   selMes.value = curMes;
 
-  const selFre = document.getElementById('cFiltroFrente');
-  const curFre = selFre.value;
-  selFre.innerHTML = '<option value="">— todas as frentes —</option>' +
-    [...frentes].sort((a,b)=>a-b).map(f => `<option value="${f}">Frente ${f}</option>`).join('');
-  selFre.value = curFre;
+  const selEquipe = document.getElementById('cFiltroEquipe');
+  const curEquipe = selEquipe.value;
+  selEquipe.innerHTML = '<option value="">— todas as equipes —</option>' +
+    [...equipes].sort().map(eq => `<option value="${eq}">${eq}</option>`).join('');
+  selEquipe.value = curEquipe;
 }
 
 function limparFiltrosConsulta() {
   document.getElementById('cFiltroMes').value    = '';
-  document.getElementById('cFiltroFrente').value = '';
+  document.getElementById('cFiltroEquipe').value = '';
   document.getElementById('cFiltroStatus').value = '';
   renderConsulta();
 }
@@ -3025,21 +2172,21 @@ function renderConsulta(page) {
 
   const q          = (document.getElementById('consultaSearch')?.value || '').toLowerCase();
   const filtMes    = document.getElementById('cFiltroMes')?.value    || '';
-  const filtFrente = document.getElementById('cFiltroFrente')?.value || '';
+  const filtEquipe = document.getElementById('cFiltroEquipe')?.value || '';
   const filtStatus = document.getElementById('cFiltroStatus')?.value || '';
 
   document.getElementById('cFiltroMes').classList.toggle('active', !!filtMes);
-  document.getElementById('cFiltroFrente').classList.toggle('active', !!filtFrente);
+  document.getElementById('cFiltroEquipe').classList.toggle('active', !!filtEquipe);
   document.getElementById('cFiltroStatus').classList.toggle('active', !!filtStatus);
 
   let names = q
     ? FAZENDA_NAMES.filter(n => n.toLowerCase().includes(q) || String(FAZENDAS[n].cod).includes(q))
     : FAZENDA_NAMES;
 
-  if (filtFrente) names = names.filter(n =>
-    Object.values(FAZENDAS[n].talhoes).some(t => String(t.frente) === filtFrente));
   if (filtMes) names = names.filter(n =>
     Object.values(FAZENDAS[n].talhoes).some(t => talYM(t) === filtMes));
+  if (filtEquipe) names = names.filter(n =>
+    Object.values(FAZENDAS[n].talhoes).some(t => t.equipe === filtEquipe));
   if (filtStatus) names = names.filter(n => getFazStatus(n).status === filtStatus);
 
   _consultaNames = names;
@@ -3062,22 +2209,22 @@ function renderConsulta(page) {
     const allTals = Object.values(d.talhoes);
     const tals = allTals.filter(t =>
       (!filtMes    || talYM(t) === filtMes) &&
-      (!filtFrente || String(t.frente) === filtFrente)
+      (!filtEquipe || t.equipe === filtEquipe)
     );
     const totalTals = tals.length;
     const conc  = tals.filter(isTalDone).length;
     const { status, cls, ciclo } = getFazStatus(name);
-    const frentes = [...new Set(tals.map(t => t.frente).filter(Boolean))].sort((a,b)=>a-b).join(', ') || '—';
+    const equipes = [...new Set(tals.map(t => t.equipe).filter(Boolean))].join(', ') || '—';
     const haTotal = tals.reduce((s, t) => s + (t.ha || 0), 0);
     const escName = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const cbTd = _consultaSelectMode
       ? `<td class="consulta-cb" onclick="event.stopPropagation()"><input type="checkbox" ${_consultaSelected.has(name) ? 'checked' : ''} onclick="toggleConsultaSel('${escName}',this)"></td>`
       : '';
-    return `<tr class="consulta-faz-row${_consultaSelected.has(name) ? ' selected' : ''}" onclick="toggleFazDetail('${escName}',this,'${filtMes}','${filtFrente}')" oncontextmenu="openCtxMenu(event,'${escName}')" id="cfr-${CSS.escape(name)}">
+    return `<tr class="consulta-faz-row${_consultaSelected.has(name) ? ' selected' : ''}" onclick="toggleFazDetail('${escName}',this,'${filtMes}','${filtEquipe}')" oncontextmenu="openCtxMenu(event,'${escName}')" id="cfr-${CSS.escape(name)}">
       ${cbTd}
       <td><span class="consulta-expand-icon" id="cfi-${CSS.escape(name)}">▶</span><strong>${name}</strong></td>
       <td style="font-family:monospace">${d.cod}</td>
-      <td>${frentes}</td>
+      <td>${equipes}</td>
       <td><span class="faz-tag faz-tag-muted">${ciclo}</span></td>
       <td><span class="faz-tag faz-tag-${cls}">${status}</span></td>
       <td style="font-family:monospace">${conc}/${totalTals}</td>
@@ -3101,7 +2248,7 @@ function renderConsulta(page) {
     <table class="consulta-table">
       <thead><tr>
         ${_consultaSelectMode ? '<th style="width:36px"></th>' : ''}
-        <th>Fazenda</th><th>Cód</th><th>Frente</th><th>Ciclo</th>
+        <th>Fazenda</th><th>Cód</th><th>Equipe</th><th>Ciclo</th>
         <th>Status</th><th>Talhões</th><th>Área</th>
       </tr></thead>
       <tbody>${rows}</tbody>
@@ -3110,7 +2257,7 @@ function renderConsulta(page) {
   </div>`;
 }
 
-function toggleFazDetail(name, rowEl, filtMesArg, filtFrenteArg) {
+function toggleFazDetail(name, rowEl, filtMesArg, filtEquipeArg) {
   const esc = CSS.escape(name);
   const detailRow = document.getElementById('cdr-' + esc);
   const inner     = document.getElementById('cdinner-' + esc);
@@ -3135,7 +2282,7 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtFrenteArg) {
   const sorted = Object.keys(allTals).sort((a, b) => +a - +b).filter(t => {
     const td = allTals[t];
     return (!filtMesArg    || talYM(td) === filtMesArg) &&
-           (!filtFrenteArg || String(td.frente) === filtFrenteArg);
+           (!filtEquipeArg || td.equipe === filtEquipeArg);
   });
   const talRows = sorted.map(t => {
     const td = allTals[t];
@@ -3149,20 +2296,22 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtFrenteArg) {
       <td><span class="faz-tag faz-tag-${stCls}" style="font-size:10px">${stLbl}</span></td>
       <td style="font-family:monospace">${(td.ha || 0).toFixed(1)} ha</td>
       <td>${td.estagio || '—'}</td>
+      <td>${td.equipe || '—'}</td>
+      <td>${td.voo || '—'}</td>
       <td style="font-family:monospace">${data}</td>
     </tr>`;
   }).join('');
 
   inner.innerHTML = `<table class="consulta-detail-table">
     <thead><tr>
-      <th>Talhão</th><th>Tipo</th><th>Status</th><th>Área</th><th>Estágio</th><th>Mês</th>
+      <th>Talhão</th><th>Tipo</th><th>Status</th><th>Área</th><th>Estágio</th><th>Equipe</th><th>Voo</th><th>Mês</th>
     </tr></thead>
     <tbody>${talRows}</tbody>
   </table>`;
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
-let _chartFrente = null, _chartMes = null, _chartUsuario = null, _chart18m = null;
+let _chartMes = null, _chartEquipe = null, _chartUsuario = null, _chart18m = null;
 
 function getThemeColors() {
   const s = getComputedStyle(document.documentElement);
@@ -3179,14 +2328,14 @@ function getThemeColors() {
 }
 
 function isTalDone(t) {
-  return t.exp === 'CONCLUIDO' || t.exp === 'SEM LINHAS' || t.tipo === 'SEM LINHAS';
+  return !!t.done;
 }
 
 function computeDash() {
   let haTotal = 0, haConc = 0, haFazer = 0, haSemLin = 0;
   let fazConc = 0;
   let ha18Total = 0, ha18Conc = 0, ha18Fazer = 0;
-  const byFrente = {}, byMonth = {};
+  const byMonth = {}, byEquipe = {};
 
   FAZENDA_NAMES.forEach(name => {
     const tals = Object.values(FAZENDAS[name].talhoes);
@@ -3202,16 +2351,16 @@ function computeDash() {
       else                     haFazer  += ha;
 
       {
-        const f = t.frente ? 'Frente ' + t.frente : 'Indefinida';
-        if (!byFrente[f]) byFrente[f] = { conc: 0, fazer: 0 };
-        isTalDone(t) ? byFrente[f].conc += ha : byFrente[f].fazer += ha;
-      }
-
-      {
         const ym = talYM(t) || 'sem-mes';
         if (!byMonth[ym]) byMonth[ym] = { total: 0, conc: 0 };
         byMonth[ym].total += ha;
         if (isTalDone(t)) byMonth[ym].conc += ha;
+      }
+
+      {
+        const eq = t.equipe || 'Indefinida';
+        if (!byEquipe[eq]) byEquipe[eq] = { conc: 0, fazer: 0 };
+        isTalDone(t) ? byEquipe[eq].conc += ha : byEquipe[eq].fazer += ha;
       }
 
       if (is18m(t.estagio)) {
@@ -3226,7 +2375,7 @@ function computeDash() {
     haTotal, haConc, haFazer, haSemLin,
     fazTotal: FAZENDA_NAMES.length, fazConc,
     pct: haTotal > 0 ? Math.round(haConc / haTotal * 100) : 0,
-    byFrente, byMonth,
+    byMonth, byEquipe,
     ha18Total, ha18Conc, ha18Fazer
   };
 }
@@ -3310,25 +2459,25 @@ function renderDashboard() {
     }
   });
 
-  // ── Ha por Frente (barras horizontais, ordenado por total desc) ──────────
-  const fLabels = Object.keys(d.byFrente).sort((a, b) => {
+  // ── Ha por Equipe (barras horizontais, ordenado por total desc) ──────────
+  const eLabels = Object.keys(d.byEquipe).sort((a, b) => {
     if (a === 'Indefinida') return 1;
     if (b === 'Indefinida') return -1;
-    const na = parseInt(a.replace('Frente ', '')) || 0;
-    const nb = parseInt(b.replace('Frente ', '')) || 0;
-    return na - nb;
+    const totalA = d.byEquipe[a].conc + d.byEquipe[a].fazer;
+    const totalB = d.byEquipe[b].conc + d.byEquipe[b].fazer;
+    return totalB - totalA;
   });
-  if (_chartFrente) _chartFrente.destroy();
-  _chartFrente = new Chart(document.getElementById('chartFrente'), {
+  if (_chartEquipe) _chartEquipe.destroy();
+  _chartEquipe = new Chart(document.getElementById('chartEquipe'), {
     type: 'bar',
     data: {
-      labels: fLabels,
+      labels: eLabels,
       datasets: [
-        { label: 'Concluído', data: fLabels.map(f => +d.byFrente[f].conc.toFixed(0)),
+        { label: 'Concluído', data: eLabels.map(eq => +d.byEquipe[eq].conc.toFixed(0)),
           backgroundColor: c.green + 'BB', maxBarThickness: 32,
           borderRadius: { topLeft: 5, bottomLeft: 5, topRight: 0, bottomRight: 0 },
           borderSkipped: 'right' },
-        { label: 'A Fazer',   data: fLabels.map(f => +d.byFrente[f].fazer.toFixed(0)),
+        { label: 'A Fazer',   data: eLabels.map(eq => +d.byEquipe[eq].fazer.toFixed(0)),
           backgroundColor: c.blue  + 'BB', maxBarThickness: 32,
           borderRadius: { topLeft: 0, bottomLeft: 0, topRight: 5, bottomRight: 5 },
           borderSkipped: 'left' },
