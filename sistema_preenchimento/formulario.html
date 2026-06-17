@@ -1721,7 +1721,8 @@ async function salvarEtapaAnalise(name, etapa, novoValor, fileInputId) {
 // ── Upload de arquivos de projeto (.dwg/.zip) para Releases do GitHub ─────
 // Via proxy (Cloudflare Worker) — ver RELEASE_PROXY_URL e cloudflare-worker/release-proxy.js.
 async function _releaseUploadAsset(tag, name, file) {
-  const url = `${RELEASE_PROXY_URL}/upload?tag=${encodeURIComponent(tag)}&name=${encodeURIComponent(name)}&filename=${encodeURIComponent(file.name)}`;
+  const base = RELEASE_PROXY_URL.replace(/\/+$/, '');
+  const url = `${base}/upload?tag=${encodeURIComponent(tag)}&name=${encodeURIComponent(name)}&filename=${encodeURIComponent(file.name)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
