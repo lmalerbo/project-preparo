@@ -104,6 +104,22 @@
   }
   .user-badge:hover { border-color: var(--accent); }
 
+  .btn-portal {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color .2s;
+    font-family: inherit;
+    flex-shrink: 0;
+  }
+  .btn-portal:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ── Layout ── */
   .app { display: flex; flex: 1; overflow: hidden; }
 
@@ -951,6 +967,7 @@
     <button class="nav-tab" id="tabConsulta" onclick="setView('consulta')">Consultas</button>
   </nav>
   <div class="header-right">
+    <a href="../portal.html" class="btn-portal" title="Portal de Download">↗ Portal de Download</a>
     <div class="theme-toggle" onclick="toggleTheme()" id="themeToggle" title="Alternar tema">&#9790;</div>
     <div class="user-badge" onclick="openUserModal()" id="userBadge">Selecionar usuário</div>
   </div>
