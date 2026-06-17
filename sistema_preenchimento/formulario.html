@@ -1243,6 +1243,22 @@ async function _sbFetchAll(url) {
   return all;
 }
 
+// Agrupa os textos de status de voo vindos da API do dronemgmt em categorias
+// únicas. Valores antigos (OK, AGUARDAR, PEDIDO, "Status N" etc.) não batem
+// com nenhuma chave aqui e passam direto, sem quebrar.
+const VOO_STATUS_NORM = {
+  'VOADO, PROCESSAR IMAGENS':         'Voado',
+  'AGUARD. ENVIO P/ PROCESSAMENTO':   'Processando',
+  'EM PROCESSAMENTO':                 'Processando',
+  'EM REPROCESSAMENTO':               'Processando',
+  'PROCESSADO, AGUARDANDO DIVULGAÇÃO':'Processado',
+  'RELATÓRIO DIVULGADO':              'Processado',
+};
+function _normVoo(raw) {
+  if (!raw) return raw;
+  return VOO_STATUS_NORM[raw.trim().toUpperCase()] || raw;
+}
+
 // Carrega FAZENDAS/USUARIOS_HA/USUARIOS_CONFIG do Supabase, substituindo os
 // dados embutidos (mantidos como seed/fallback caso a requisição falhe).
 async function carregarDadosSupabase() {
@@ -1283,7 +1299,7 @@ async function carregarDadosSupabase() {
         layer: row.layer, semana: row.periodo_op,
         exp: row.status || '', tipo: row.tipo_linha || '', ciclo: row.ciclo || '',
         ha: row.area_ha || 0, dia: null, estagio: row.estagio || '',
-        equipe: row.equipe || '', voo: row.voo || '',
+        equipe: row.equipe || '', voo: _normVoo(row.voo) || '',
         done: !!FAZENDAS[faz].analise.preparo_ok,
       };
       layerHa[String(row.layer)] = row.area_ha || 0;
