@@ -1664,8 +1664,17 @@ function renderPainelAnalise(name) {
           <span>Projeto de Preparo</span>
           <span class="faz-tag faz-tag-${an.preparo_ok ? 'green' : 'blue'}">${an.preparo_ok ? 'OK' : 'Pendente'}</span>
         </div>
-        <input type="file" id="filePreparo" accept=".dwg,.zip" style="font-size:11px">
-        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','preparo',${!an.preparo_ok},'filePreparo')">
+        ${an.preparo_ok ? '' : `
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Os 3 arquivos são obrigatórios para marcar como OK:</div>
+        <label style="display:block;font-size:11px;margin-bottom:2px">Projeto (.dwg)</label>
+        <input type="file" id="filePreparoDwg" accept=".dwg" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
+        <label style="display:block;font-size:11px;margin-bottom:2px">Exportação (.zip)</label>
+        <input type="file" id="filePreparoZip" accept=".zip" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
+        <label style="display:block;font-size:11px;margin-bottom:2px">Mapa Sistematização (.pdf)</label>
+        <input type="file" id="filePreparoPdf" accept=".pdf" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
+        `}
+        <button class="btn-modal-ok" id="btnPreparoOk" ${an.preparo_ok ? '' : 'disabled'}
+                onclick="salvarEtapaAnalise('${esc}','preparo',${!an.preparo_ok},['filePreparoDwg','filePreparoZip','filePreparoPdf'])">
           ${an.preparo_ok ? 'Reabrir' : 'Marcar como OK'}
         </button>
       </div>`;
@@ -1678,18 +1687,25 @@ function renderPainelAnalise(name) {
     html + `<div id="analiseLog" style="font-size:11px;line-height:1.8;margin-top:10px"></div>`;
 }
 
-async function salvarEtapaAnalise(name, etapa, novoValor, fileInputId) {
+function _atualizarBtnPreparo() {
+  const ids = ['filePreparoDwg', 'filePreparoZip', 'filePreparoPdf'];
+  const todos = ids.every(id => document.getElementById(id)?.files?.length);
+  const btn = document.getElementById('btnPreparoOk');
+  if (btn) btn.disabled = !todos;
+}
+
+async function salvarEtapaAnalise(name, etapa, novoValor, fileInputIds) {
   const d = FAZENDAS[name];
   if (!d) return;
   const log = document.getElementById('analiseLog');
   const setLog = msg => { if (log) log.innerHTML = msg; };
 
-  const fileInput = fileInputId ? document.getElementById(fileInputId) : null;
-  const file = fileInput?.files?.[0];
+  const ids = !fileInputIds ? [] : Array.isArray(fileInputIds) ? fileInputIds : [fileInputIds];
+  const files = ids.map(id => document.getElementById(id)?.files?.[0]).filter(Boolean);
 
   try {
-    if (file) {
-      setLog('Enviando arquivo...');
+    for (const file of files) {
+      setLog(`Enviando ${file.name}...`);
       await _releaseUploadAsset(String(d.cod), name, file);
     }
 
