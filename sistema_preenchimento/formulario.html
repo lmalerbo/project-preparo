@@ -872,7 +872,7 @@
   }
   .dash-header-sub { font-size: 11px; color: var(--muted); font-family: monospace; }
 
-  .dash-kpi-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 14px; }
+  .dash-kpi-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
   .dash-kpi-card {
     background: var(--surface); border: 1px solid var(--border);
     border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow);
@@ -990,15 +990,27 @@
       </div>
     </div>
 
-    <!-- Linha: Ha por Usuário + Talhões 18m -->
+    <!-- Linha: Projetos por Status + Área por Status de Voo -->
+    <div class="dash-charts-flex">
+      <div class="dash-chart-card" style="overflow:hidden; min-width:0; display:flex; flex-direction:column">
+        <div class="dash-chart-title">Projetos por Status</div>
+        <div id="chartProjetosWrap" style="position:relative; width:100%; flex:1; min-height:180px">
+          <canvas id="chartProjetos"></canvas>
+        </div>
+      </div>
+      <div class="dash-chart-card" style="overflow:hidden; min-width:0; display:flex; flex-direction:column">
+        <div class="dash-chart-title">Área por Status de Voo</div>
+        <div id="chartVooWrap" style="position:relative; width:100%; flex:1; min-height:180px">
+          <canvas id="chartVoo"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linha: Ha por Usuário (oculto se não houver dados) -->
     <div class="dash-charts-flex">
       <div class="dash-chart-card" id="chartUsuarioCard" style="display:none">
         <div class="dash-chart-title">Ha por Usuário — Log de Exportações</div>
         <canvas id="chartUsuario" height="200"></canvas>
-      </div>
-      <div class="dash-chart-card">
-        <div class="dash-chart-title">Talhões 18m — Total / Concluído / A Fazer</div>
-        <canvas id="chart18m" height="200"></canvas>
       </div>
     </div>
 
@@ -1560,12 +1572,6 @@ window.onload = async () => {
 // ── Mês atual ─────────────────────────────────────────────────────────────
 const _hoje = new Date();
 const _anoAtual = _hoje.getFullYear(), _mesAtual = _hoje.getMonth();
-function is18m(estagio) {
-  if (!estagio) return false;
-  const e = estagio.toUpperCase();
-  return e.includes('18') || e.includes('INVERNO') ||
-         e.includes('FORMA') || e === 'ANO';
-}
 
 // Converte período de colheita (1-12) → "YYYY-MM" (todos no ano atual)
 function semanaToYM(semana) {
@@ -2473,7 +2479,7 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtEquipeArg) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────
-let _chartMes = null, _chartEquipe = null, _chartUsuario = null, _chart18m = null;
+let _chartMes = null, _chartEquipe = null, _chartUsuario = null, _chartProjetos = null, _chartVoo = null;
 
 function getThemeColors() {
   const s = getComputedStyle(document.documentElement);
@@ -2494,23 +2500,17 @@ function isTalDone(t) {
 }
 
 function computeDash() {
-  let haTotal = 0, haConc = 0, haFazer = 0, haSemLin = 0;
-  let fazConc = 0;
-  let ha18Total = 0, ha18Conc = 0, ha18Fazer = 0;
-  const byMonth = {}, byEquipe = {};
+  let haTotal = 0, haConc = 0, haFazer = 0;
+  const byMonth = {}, byEquipe = {}, byVoo = {};
 
   FAZENDA_NAMES.forEach(name => {
     const tals = Object.values(FAZENDAS[name].talhoes);
-    const allConc = tals.length > 0 && tals.every(isTalDone);
-    if (allConc) fazConc++;
 
     tals.forEach(t => {
       const ha = t.ha || 0;
-      const semLin = t.exp === 'SEM LINHAS' || t.tipo === 'SEM LINHAS';
       haTotal += ha;
-      if (semLin)              haSemLin += ha;
-      if (isTalDone(t))        haConc   += ha;
-      else                     haFazer  += ha;
+      if (isTalDone(t)) haConc += ha;
+      else              haFazer += ha;
 
       {
         const ym = talYM(t) || 'sem-mes';
@@ -2525,20 +2525,23 @@ function computeDash() {
         isTalDone(t) ? byEquipe[eq].conc += ha : byEquipe[eq].fazer += ha;
       }
 
-      if (is18m(t.estagio)) {
-        ha18Total += ha;
-        if (isTalDone(t)) ha18Conc += ha;
-        else              ha18Fazer += ha;
+      {
+        const vo = t.voo || 'Indefinido';
+        byVoo[vo] = (byVoo[vo] || 0) + ha;
       }
     });
   });
 
+  const projPendenteA = _fazendasParaAnalistaA().length;
+  const projPendenteB = _fazendasParaAnalistaB().length;
+  const projConcluido = FAZENDA_NAMES.length - projPendenteA - projPendenteB;
+
   return {
-    haTotal, haConc, haFazer, haSemLin,
-    fazTotal: FAZENDA_NAMES.length, fazConc,
+    haTotal, haConc, haFazer,
+    fazTotal: FAZENDA_NAMES.length,
     pct: haTotal > 0 ? Math.round(haConc / haTotal * 100) : 0,
-    byMonth, byEquipe,
-    ha18Total, ha18Conc, ha18Fazer
+    byMonth, byEquipe, byVoo,
+    projPendenteA, projPendenteB, projConcluido,
   };
 }
 
@@ -2559,11 +2562,9 @@ function renderDashboard() {
   // KPI cards
   const fmtHa = v => v.toLocaleString('pt-BR', {minimumFractionDigits:0, maximumFractionDigits:0});
   document.getElementById('dashKpiRow').innerHTML = [
-    { label: 'Total Fazendas', val: d.fazTotal.toLocaleString('pt-BR'), sub: `${d.fazConc} fazenda${d.fazConc!==1?'s':''} concluída${d.fazConc!==1?'s':''}`, cls: '' },
-    { label: 'Área Total',     val: fmtHa(d.haTotal), sub: 'hectares programados', cls: '' },
+    { label: 'Área Total',     val: fmtHa(d.haTotal), sub: `${d.fazTotal.toLocaleString('pt-BR')} fazenda${d.fazTotal!==1?'s':''}`, cls: '' },
     { label: 'Ha Concluído',   val: fmtHa(d.haConc),  sub: `${d.pct}% do total`, cls: 'green' },
     { label: 'Ha A Fazer',     val: fmtHa(d.haFazer), sub: 'hectares restantes', cls: 'blue' },
-    { label: 'Ha Sem Linhas',  val: fmtHa(d.haSemLin),sub: 'incluído em concluído', cls: 'accent' },
   ].map(k => `<div class="dash-kpi-card${k.cls ? ' ' + k.cls : ''}">
     <div class="dash-kpi-label">${k.label}</div>
     <div class="dash-kpi-value">${k.val}</div>
@@ -2690,30 +2691,59 @@ function renderDashboard() {
     });
   }
 
-  // ── Talhões 18m ─────────────────────────────────────────────────────────
-  if (_chart18m) _chart18m.destroy();
-  _chart18m = new Chart(document.getElementById('chart18m'), {
+  // ── Projetos por Status (contagem de fazendas) ────────────────────────────
+  if (_chartProjetos) _chartProjetos.destroy();
+  _chartProjetos = new Chart(document.getElementById('chartProjetos'), {
     type: 'bar',
     data: {
-      labels: ['Total 18m', 'Concluído', 'A Fazer'],
+      labels: ['Identificação/Escoamento', 'Projeto de Preparo', 'Concluído'],
       datasets: [{
-        label: 'Hectares',
-        data: [d.ha18Total, d.ha18Conc, d.ha18Fazer],
-        backgroundColor: [c.muted + '77', c.green + 'BB', c.blue + 'BB'],
-        borderColor:     [c.muted, c.green, c.blue],
+        label: 'Fazendas',
+        data: [d.projPendenteA, d.projPendenteB, d.projConcluido],
+        backgroundColor: [c.blue + 'BB', c.accent + 'BB', c.green + 'BB'],
+        borderColor:     [c.blue, c.accent, c.green],
         borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
       }]
     },
     options: {
-      responsive: true,
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
       scales: {
-        x: { grid: { display: false }, ticks: { font: { size: 13, weight: '600' } } },
-        y: { grid: { color: gridLine }, ticks: { font: { size: 11 } },
-             title: { display: true, text: 'Hectares', font: { size: 11 } } }
+        x: { grid: { color: gridLine }, ticks: { font: { size: 11 }, precision: 0 },
+             title: { display: true, text: 'Fazendas', font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
       },
       plugins: {
         legend: { display: false },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.raw.toLocaleString('pt-BR',{maximumFractionDigits:0})} ha` } }
+        tooltip: { callbacks: { label: ctx => ` ${ctx.raw} fazenda${ctx.raw !== 1 ? 's' : ''}` } }
+      }
+    }
+  });
+
+  // ── Área por Status de Voo ────────────────────────────────────────────────
+  const vLabels = Object.keys(d.byVoo).sort((a, b) => d.byVoo[b] - d.byVoo[a]);
+  if (_chartVoo) _chartVoo.destroy();
+  _chartVoo = new Chart(document.getElementById('chartVoo'), {
+    type: 'bar',
+    data: {
+      labels: vLabels,
+      datasets: [{
+        label: 'Hectares',
+        data: vLabels.map(v => +d.byVoo[v].toFixed(0)),
+        backgroundColor: c.blue + 'BB',
+        borderColor: c.blue,
+        borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: gridLine }, ticks: { font: { size: 11 } },
+             title: { display: true, text: 'Hectares', font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 12, weight: '600' } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => fmtTooltip('Área', ctx.raw) } }
       }
     }
   });
