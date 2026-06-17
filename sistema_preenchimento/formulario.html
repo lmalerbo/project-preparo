@@ -236,17 +236,51 @@
   /* ── Painel de análise (Registros) ── */
   .analise-stage {
     border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
     border-radius: 8px;
     padding: 14px;
     margin-bottom: 12px;
     background: var(--surface2);
   }
-  .analise-stage.muted { color: var(--muted); font-size: 13px; }
+  .analise-stage.done { border-left-color: var(--green); opacity: .85; }
+  .analise-stage.muted { color: var(--muted); font-size: 13px; border-left-color: var(--border); }
   .analise-stage-header {
     display: flex; align-items: center; justify-content: space-between;
     margin-bottom: 10px; font-weight: 700; font-size: 14px;
   }
+  .analise-stage-meta { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
   .analise-stage input[type="file"] { display: block; margin-bottom: 10px; }
+  .link-btn-reabrir {
+    background: none; border: none; color: var(--muted);
+    font-size: 11px; text-decoration: underline; cursor: pointer; padding: 0;
+  }
+  .link-btn-reabrir:hover { color: var(--red); }
+
+  /* ── Seletor de arquivo estilizado ── */
+  .file-picker {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px; cursor: pointer;
+  }
+  .file-picker input[type="file"] {
+    position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden;
+  }
+  .file-picker-btn {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 7px 12px; font-size: 11px; font-weight: 700; white-space: nowrap;
+  }
+  .file-picker:hover .file-picker-btn { border-color: var(--accent); }
+  .file-picker-name { font-size: 11px; color: var(--muted); }
+  .file-picker-name.ok { color: var(--green); font-weight: 700; }
+
+  /* ── Abas de filtro da fila (Registros) ── */
+  .fila-tabs { display: flex; gap: 4px; padding: 0 14px 10px; flex-wrap: wrap; }
+  .fila-tab {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 8px; font-size: 10.5px; font-weight: 700; color: var(--muted);
+    cursor: pointer; white-space: nowrap;
+  }
+  .fila-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .fila-tab-count { opacity: .8; }
 
   /* ── Cobertura toggle ── */
   .cob-toggle { display: flex; gap: 8px; margin-bottom: 18px; }
@@ -979,6 +1013,7 @@
       <span class="sidebar-title">MINHAS PENDÊNCIAS</span>
       <span class="plan-count" id="planCount">0</span>
     </div>
+    <div class="fila-tabs" id="filaTabs"></div>
     <div class="plan-search-wrap">
       <input type="text" id="planSearch" placeholder="+ Fixar fazenda..."
              oninput="renderPlanDropdown(this.value)" onfocus="renderPlanDropdown(this.value)"
@@ -1221,8 +1256,14 @@ async function carregarDadosSupabase() {
           cod: row.cod_faz, talhoes: {},
           analise: {
             identificacao_ok: !!an.identificacao_ok,
+            identificacao_usuario: an.identificacao_usuario || '',
+            identificacao_data: an.identificacao_data || null,
             escoamento_ok:    !!an.escoamento_ok,
+            escoamento_usuario: an.escoamento_usuario || '',
+            escoamento_data: an.escoamento_data || null,
             preparo_ok:       !!an.preparo_ok,
+            preparo_usuario: an.preparo_usuario || '',
+            preparo_data: an.preparo_data || null,
           },
         };
       }
@@ -1597,6 +1638,55 @@ function _fazendasParaAnalistaB() {
   });
 }
 
+// 'tudo' | 'a' | 'b' — qual lote de tarefas o analista quer ver na fila
+let _filaFiltro = 'tudo';
+
+function _setFilaFiltro(f) {
+  _filaFiltro = f;
+  renderPlano();
+}
+
+function _filaAtual() {
+  const perfis = getUserPerfis(currentUser);
+  const queueA = perfis.includes('analista_a') ? _fazendasParaAnalistaA() : [];
+  const queueB = perfis.includes('analista_b') ? _fazendasParaAnalistaB() : [];
+  let queue;
+  if (_filaFiltro === 'a') queue = queueA;
+  else if (_filaFiltro === 'b') queue = queueB;
+  else queue = [...queueA, ...queueB];
+  return queue.sort();
+}
+
+// Lista final exibida na sidebar: fixadas manualmente primeiro, depois a fila automática
+function _listaFila() {
+  const queue = _filaAtual();
+  const pinned = planFazendas.filter(n => FAZENDAS[n]);
+  const queueOnly = queue.filter(n => !pinned.includes(n));
+  return [...pinned, ...queueOnly];
+}
+
+// Há alguma ação que o usuário atual ainda pode fazer nesta fazenda?
+function _temAcaoPendente(name) {
+  const an = FAZENDAS[name]?.analise;
+  if (!an) return false;
+  const perfis = getUserPerfis(currentUser);
+  if (perfis.includes('analista_a') && !(an.identificacao_ok && an.escoamento_ok)) return true;
+  if (perfis.includes('analista_b') && an.identificacao_ok && an.escoamento_ok && !an.preparo_ok) return true;
+  return false;
+}
+
+function _avancarApos() {
+  const fila = _listaFila();
+  return fila.length ? fila[0] : null;
+}
+
+function _fmtDataBR(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function _etapaAtual(name) {
   const an = FAZENDAS[name]?.analise;
   if (!an) return '—';
@@ -1621,6 +1711,38 @@ function selectFazenda(name) {
   renderPlano();
 }
 
+// Card de uma etapa já concluída: compacto, com quem/quando, e reabrir com confirmação
+function _cardConcluido(titulo, esc, etapa, usuario, data) {
+  return `
+    <div class="analise-stage done">
+      <div class="analise-stage-header">
+        <span>✓ ${titulo}</span>
+        <span class="faz-tag faz-tag-green">OK</span>
+      </div>
+      <div class="analise-stage-meta">${usuario ? `por <strong>${usuario}</strong>` : ''}${data ? ' em ' + _fmtDataBR(data) : ''}</div>
+      <button class="link-btn-reabrir" onclick="if(confirm('Reabrir ${titulo.toLowerCase()}? Isso volta o status para pendente.')) salvarEtapaAnalise('${esc}','${etapa}',false)">Reabrir</button>
+    </div>`;
+}
+
+function _filePickerHtml(id, accept, label) {
+  return `
+    <label class="file-picker" for="${id}">
+      <span class="file-picker-btn">📎 ${label}</span>
+      <span class="file-picker-name" id="${id}_name">Nenhum arquivo</span>
+      <input type="file" id="${id}" accept="${accept}" oninput="_onFilePicked(this)">
+    </label>`;
+}
+
+function _onFilePicked(input) {
+  const nameEl = document.getElementById(input.id + '_name');
+  if (nameEl) {
+    const ok = !!input.files?.length;
+    nameEl.textContent = ok ? ('✓ ' + input.files[0].name) : 'Nenhum arquivo';
+    nameEl.classList.toggle('ok', ok);
+  }
+  _atualizarBtnPreparo();
+}
+
 function renderPainelAnalise(name) {
   const d  = FAZENDAS[name];
   const an = d.analise;
@@ -1632,50 +1754,50 @@ function renderPainelAnalise(name) {
   let html = '';
 
   if (podeA) {
-    html += `
+    html += an.identificacao_ok
+      ? _cardConcluido('Identificação', esc, 'identificacao', an.identificacao_usuario, an.identificacao_data)
+      : `
       <div class="analise-stage">
         <div class="analise-stage-header">
           <span>Identificação</span>
-          <span class="faz-tag faz-tag-${an.identificacao_ok ? 'green' : 'blue'}">${an.identificacao_ok ? 'OK' : 'Pendente'}</span>
+          <span class="faz-tag faz-tag-blue">Pendente</span>
         </div>
-        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','identificacao',${!an.identificacao_ok})">
-          ${an.identificacao_ok ? 'Reabrir' : 'Marcar como OK'}
-        </button>
-      </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Confirme que a fazenda foi identificada no orthomosaico processado.</div>
+        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','identificacao',true)">Marcar como OK</button>
+      </div>`;
+
+    html += an.escoamento_ok
+      ? _cardConcluido('Escoamento', esc, 'escoamento', an.escoamento_usuario, an.escoamento_data)
+      : `
       <div class="analise-stage">
         <div class="analise-stage-header">
           <span>Escoamento</span>
-          <span class="faz-tag faz-tag-${an.escoamento_ok ? 'green' : 'blue'}">${an.escoamento_ok ? 'OK' : 'Pendente'}</span>
+          <span class="faz-tag faz-tag-blue">Pendente</span>
         </div>
-        <input type="file" id="fileEscoamento" accept=".pdf" style="font-size:11px">
-        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','escoamento',${!an.escoamento_ok},'fileEscoamento')">
-          ${an.escoamento_ok ? 'Reabrir' : 'Marcar como OK'}
-        </button>
+        ${_filePickerHtml('fileEscoamento', '.pdf', 'Mapa Escoamento (.pdf)')}
+        <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','escoamento',true,'fileEscoamento')">Marcar como OK</button>
       </div>`;
   }
 
   if (podeB) {
     if (!(an.identificacao_ok && an.escoamento_ok)) {
-      html += `<div class="analise-stage muted">Aguardando identificação e escoamento (Analista A) para liberar o projeto de preparo.</div>`;
+      html += `<div class="analise-stage muted">Aguardando identificação e escoamento para liberar o projeto de preparo.</div>`;
+    } else if (an.preparo_ok) {
+      html += _cardConcluido('Projeto de Preparo', esc, 'preparo', an.preparo_usuario, an.preparo_data);
     } else {
       html += `
       <div class="analise-stage">
         <div class="analise-stage-header">
           <span>Projeto de Preparo</span>
-          <span class="faz-tag faz-tag-${an.preparo_ok ? 'green' : 'blue'}">${an.preparo_ok ? 'OK' : 'Pendente'}</span>
+          <span class="faz-tag faz-tag-blue">Pendente</span>
         </div>
-        ${an.preparo_ok ? '' : `
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Os 3 arquivos são obrigatórios para marcar como OK:</div>
-        <label style="display:block;font-size:11px;margin-bottom:2px">Projeto (.dwg)</label>
-        <input type="file" id="filePreparoDwg" accept=".dwg" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
-        <label style="display:block;font-size:11px;margin-bottom:2px">Exportação (.zip)</label>
-        <input type="file" id="filePreparoZip" accept=".zip" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
-        <label style="display:block;font-size:11px;margin-bottom:2px">Mapa Sistematização (.pdf)</label>
-        <input type="file" id="filePreparoPdf" accept=".pdf" style="font-size:11px;margin-bottom:8px" oninput="_atualizarBtnPreparo()">
-        `}
-        <button class="btn-modal-ok" id="btnPreparoOk" ${an.preparo_ok ? '' : 'disabled'}
-                onclick="salvarEtapaAnalise('${esc}','preparo',${!an.preparo_ok},['filePreparoDwg','filePreparoZip','filePreparoPdf'])">
-          ${an.preparo_ok ? 'Reabrir' : 'Marcar como OK'}
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Os 3 arquivos são obrigatórios para marcar como OK:</div>
+        ${_filePickerHtml('filePreparoDwg', '.dwg', 'Projeto (.dwg)')}
+        ${_filePickerHtml('filePreparoZip', '.zip', 'Exportação (.zip)')}
+        ${_filePickerHtml('filePreparoPdf', '.pdf', 'Mapa Sistematização (.pdf)')}
+        <button class="btn-modal-ok" id="btnPreparoOk" disabled
+                onclick="salvarEtapaAnalise('${esc}','preparo',true,['filePreparoDwg','filePreparoZip','filePreparoPdf'])">
+          Marcar como OK
         </button>
       </div>`;
     }
@@ -1726,9 +1848,25 @@ async function salvarEtapaAnalise(name, etapa, novoValor, fileInputIds) {
 
     showToast(`${name}: ${etapa} ${novoValor ? 'marcado como OK' : 'reaberto'}.`);
     await carregarDadosSupabase();
-    renderPlano();
     renderDashboard();
-    if (FAZENDAS[name]) selectFazenda(name);
+
+    if (novoValor && !_temAcaoPendente(name)) {
+      const proxima = _avancarApos();
+      currentFaz = null;
+      if (proxima) {
+        selectFazenda(proxima);
+      } else {
+        document.getElementById('formArea').style.display = 'none';
+        document.getElementById('placeholder').style.display = 'flex';
+        document.querySelector('#placeholder .placeholder-icon').textContent = '🎉';
+        document.querySelector('#placeholder .placeholder-text').textContent = 'Nenhuma pendência por aqui agora!';
+        renderPlano();
+      }
+    } else if (FAZENDAS[name]) {
+      selectFazenda(name);
+    } else {
+      renderPlano();
+    }
   } catch (e) {
     setLog(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
@@ -2004,19 +2142,26 @@ function renderPlano() {
   const podeA = perfis.includes('analista_a');
   const podeB = perfis.includes('analista_b');
 
-  let queue = [];
-  if (podeA) queue = queue.concat(_fazendasParaAnalistaA());
-  if (podeB) queue = queue.concat(_fazendasParaAnalistaB());
-  queue = [...new Set(queue)].sort();
+  const tabsEl = document.getElementById('filaTabs');
+  if (podeA && podeB) {
+    const totA = _fazendasParaAnalistaA().length;
+    const totB = _fazendasParaAnalistaB().length;
+    tabsEl.innerHTML = `
+      <button class="fila-tab${_filaFiltro === 'tudo' ? ' active' : ''}" onclick="_setFilaFiltro('tudo')">Tudo <span class="fila-tab-count">${totA + totB}</span></button>
+      <button class="fila-tab${_filaFiltro === 'a' ? ' active' : ''}" onclick="_setFilaFiltro('a')">Identif./Escoam. <span class="fila-tab-count">${totA}</span></button>
+      <button class="fila-tab${_filaFiltro === 'b' ? ' active' : ''}" onclick="_setFilaFiltro('b')">Preparo <span class="fila-tab-count">${totB}</span></button>`;
+  } else {
+    tabsEl.innerHTML = '';
+    _filaFiltro = 'tudo';
+  }
 
-  const pinned   = planFazendas.filter(n => FAZENDAS[n]);
-  const queueOnly = queue.filter(n => !pinned.includes(n));
-  const all = [...pinned, ...queueOnly];
+  const all = _listaFila();
+  const pinned = planFazendas.filter(n => FAZENDAS[n]);
 
   document.getElementById('planCount').textContent = String(all.length);
 
   if (!all.length) {
-    document.getElementById('planList').innerHTML = '<div class="plan-empty">Nada pendente para você 🎉</div>';
+    document.getElementById('planList').innerHTML = '<div class="plan-empty">Nada pendente por aqui 🎉</div>';
     return;
   }
   document.getElementById('planList').innerHTML = all.map(name => {
