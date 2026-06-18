@@ -1296,8 +1296,9 @@ const VOO_STATUS_NORM = {
   'PROCESSADO, AGUARDANDO DIVULGAÇÃO':'Processado',
   'RELATÓRIO DIVULGADO':              'Processado',
 };
+const VOO_SEM_SOLICITACAO = 'Sem solicitação';
 function _normVoo(raw) {
-  if (!raw) return raw;
+  if (!raw) return VOO_SEM_SOLICITACAO;
   return VOO_STATUS_NORM[raw.trim().toUpperCase()] || raw;
 }
 
@@ -1344,7 +1345,7 @@ async function carregarDadosSupabase() {
         layer: row.layer, semana: row.periodo_op,
         exp: row.status || '', tipo: row.tipo_linha || '', ciclo: row.ciclo || '',
         ha: row.area_ha || 0, dia: null, estagio: row.estagio || '',
-        equipe: row.equipe || '', voo: _normVoo(row.voo) || '',
+        equipe: row.equipe || '', voo: _normVoo(row.voo),
         done: !!FAZENDAS[faz].analise.preparo_ok,
       };
       layerHa[String(row.layer)] = row.area_ha || 0;
@@ -2633,7 +2634,7 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtVooArg) {
       <td style="font-family:monospace">${(td.ha || 0).toFixed(1)} ha</td>
       <td>${td.estagio || '—'}</td>
       <td>${td.equipe || '—'}</td>
-      <td>${td.voo || '—'}</td>
+      <td>${td.voo === VOO_SEM_SOLICITACAO ? `<span class="faz-tag faz-tag-muted">${VOO_SEM_SOLICITACAO}</span>` : (td.voo || '—')}</td>
       <td style="font-family:monospace">${data}</td>
     </tr>`;
   }).join('');
@@ -2696,7 +2697,7 @@ function computeDash() {
       }
 
       {
-        const vo = t.voo || 'Indefinido';
+        const vo = t.voo;
         byVoo[vo] = (byVoo[vo] || 0) + ha;
       }
     });
@@ -2910,8 +2911,8 @@ function renderDashboard() {
       datasets: [{
         label: 'Hectares',
         data: vLabels.map(v => +d.byVoo[v].toFixed(0)),
-        backgroundColor: c.blue + 'BB',
-        borderColor: c.blue,
+        backgroundColor: vLabels.map(v => (v === VOO_SEM_SOLICITACAO ? c.muted : c.blue) + 'BB'),
+        borderColor:     vLabels.map(v => (v === VOO_SEM_SOLICITACAO ? c.muted : c.blue)),
         borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
       }]
     },
