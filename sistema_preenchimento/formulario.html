@@ -1102,7 +1102,8 @@
       </select>
       <select id="cFiltroStatus" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os status —</option>
-        <option value="IDENTIFICAÇÃO/ESCOAMENTO">Identificação/Escoamento</option>
+        <option value="IDENTIFICAÇÃO">Identificação</option>
+        <option value="ESCOAMENTO">Escoamento</option>
         <option value="AGUARD. OBS">Aguard. Obs</option>
         <option value="PROJETO">Projeto</option>
         <option value="CONCLUÍDO">Concluído</option>
@@ -1846,7 +1847,8 @@ function _fmtDataBR(iso) {
 function _etapaAtual(name) {
   const an = FAZENDAS[name]?.analise;
   if (!an) return '—';
-  if (!(an.identificacao_ok && an.escoamento_ok)) return 'Identificação/Escoamento';
+  if (!an.identificacao_ok) return 'Identificação';
+  if (!an.escoamento_ok) return 'Escoamento';
   if (!an.observacoes_ok) return 'Aguardando Observações';
   if (!an.preparo_ok) return 'Projeto de Preparo';
   return 'Concluído';
@@ -2274,10 +2276,11 @@ function getFazStatus(name) {
   if (!tals.length || !an) return { status: '—', cls: 'muted', ciclo: '—' };
   const ciclo = tals.find(t => t.ciclo)?.ciclo || '—';
   let status, cls;
-  if (!(an.identificacao_ok && an.escoamento_ok)) { status = 'IDENTIFICAÇÃO/ESCOAMENTO'; cls = 'blue'; }
-  else if (!an.observacoes_ok)                    { status = 'AGUARD. OBS';             cls = 'blue'; }
-  else if (!an.preparo_ok)                         { status = 'PROJETO';                 cls = 'blue'; }
-  else                                              { status = 'CONCLUÍDO';               cls = 'green'; }
+  if (!an.identificacao_ok)        { status = 'IDENTIFICAÇÃO'; cls = 'blue'; }
+  else if (!an.escoamento_ok)      { status = 'ESCOAMENTO';    cls = 'blue'; }
+  else if (!an.observacoes_ok)     { status = 'AGUARD. OBS';   cls = 'blue'; }
+  else if (!an.preparo_ok)         { status = 'PROJETO';       cls = 'blue'; }
+  else                              { status = 'CONCLUÍDO';     cls = 'green'; }
   return { status, cls, ciclo };
 }
 
@@ -2702,7 +2705,11 @@ function computeDash() {
     });
   });
 
-  const projPendenteA = _fazendasParaAnalistaA().length;
+  const projPendenteIdent = FAZENDA_NAMES.filter(n => !FAZENDAS[n].analise.identificacao_ok).length;
+  const projPendenteEscoamento = FAZENDA_NAMES.filter(n => {
+    const an = FAZENDAS[n].analise;
+    return an.identificacao_ok && !an.escoamento_ok;
+  }).length;
   const projAguardandoObs = FAZENDA_NAMES.filter(n => {
     const an = FAZENDAS[n].analise;
     return an.identificacao_ok && an.escoamento_ok && !an.observacoes_ok;
@@ -2711,14 +2718,14 @@ function computeDash() {
     const an = FAZENDAS[n].analise;
     return an.identificacao_ok && an.escoamento_ok && an.observacoes_ok && !an.preparo_ok;
   }).length;
-  const projConcluido = FAZENDA_NAMES.length - projPendenteA - projAguardandoObs - projPendenteB;
+  const projConcluido = FAZENDA_NAMES.length - projPendenteIdent - projPendenteEscoamento - projAguardandoObs - projPendenteB;
 
   return {
     haTotal, haConc, haFazer,
     fazTotal: FAZENDA_NAMES.length,
     pct: haTotal > 0 ? Math.round(haConc / haTotal * 100) : 0,
     byMonth, byEquipe, byVoo,
-    projPendenteA, projAguardandoObs, projPendenteB, projConcluido,
+    projPendenteIdent, projPendenteEscoamento, projAguardandoObs, projPendenteB, projConcluido,
   };
 }
 
@@ -2873,12 +2880,12 @@ function renderDashboard() {
   _chartProjetos = new Chart(document.getElementById('chartProjetos'), {
     type: 'bar',
     data: {
-      labels: ['Identificação/Escoamento', 'Aguardando Observações', 'Projeto de Preparo', 'Concluído'],
+      labels: ['Identificação', 'Escoamento', 'Aguardando Observações', 'Projeto de Preparo', 'Concluído'],
       datasets: [{
         label: 'Fazendas',
-        data: [d.projPendenteA, d.projAguardandoObs, d.projPendenteB, d.projConcluido],
-        backgroundColor: [c.blue + 'BB', c.muted + 'BB', c.accent + 'BB', c.green + 'BB'],
-        borderColor:     [c.blue, c.muted, c.accent, c.green],
+        data: [d.projPendenteIdent, d.projPendenteEscoamento, d.projAguardandoObs, d.projPendenteB, d.projConcluido],
+        backgroundColor: [c.blue + 'BB', c.blue + '77', c.muted + 'BB', c.accent + 'BB', c.green + 'BB'],
+        borderColor:     [c.blue, c.blue, c.muted, c.accent, c.green],
         borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
       }]
     },
