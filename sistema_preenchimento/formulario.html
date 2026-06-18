@@ -1209,6 +1209,25 @@
       </div>
 
       <div class="admin-section">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Status de voo manual</label>
+        <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
+          Para quando a sincronização automática com o dronemgmt estiver fora do ar —
+          ajusta o status de voo de uma fazenda (todos os talhões) na mão. Quando a
+          sincronização voltar, ela sobrescreve este valor normalmente.
+        </div>
+        <select id="selFazendaVoo" style="width:100%;margin-bottom:8px"></select>
+        <select id="selNovoStatusVoo" style="width:100%;margin-bottom:8px">
+          <option value="Sem solicitação">Sem solicitação</option>
+          <option value="A voar">A voar</option>
+          <option value="Voado">Voado</option>
+          <option value="Processando">Processando</option>
+          <option value="Processado">Processado</option>
+        </select>
+        <button class="btn-modal-ok" onclick="aplicarVooManual()">Aplicar</button>
+        <div id="logVooManual" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+      </div>
+
+      <div class="admin-section">
         <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Adicionar talhões a fazenda existente</label>
         <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
           Para quando o projeto avançou e cobriu mais talhões do que a demanda original previa.
@@ -1598,6 +1617,41 @@ async function processarAtualizacaoBase() {
     renderDashboard();
   } catch (e) {
     _logBase(`<span style="color:var(--red)">✗ ${e.message}</span>`);
+  }
+}
+
+// ── Status de voo manual (stopgap enquanto a sincronização com o dronemgmt está fora) ──
+function _popularSelectFazendaVoo() {
+  const sel = document.getElementById('selFazendaVoo');
+  if (!sel) return;
+  sel.innerHTML = FAZENDA_NAMES.map(n => `<option value="${n}">${n} (cod ${FAZENDAS[n].cod})</option>`).join('');
+}
+
+async function aplicarVooManual() {
+  const fazenda = document.getElementById('selFazendaVoo')?.value;
+  const novoStatus = document.getElementById('selNovoStatusVoo')?.value;
+  const log = document.getElementById('logVooManual');
+  if (log) log.innerHTML = '';
+  const setLog = msg => { if (log) log.innerHTML = msg; };
+
+  if (!fazenda || !FAZENDAS[fazenda]) { setLog('<span style="color:var(--red)">Selecione uma fazenda.</span>'); return; }
+
+  try {
+    setLog('Salvando...');
+    const cod = FAZENDAS[fazenda].cod;
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/programacao?cod_faz=eq.${cod}`, {
+      method: 'PATCH',
+      headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+      body: JSON.stringify({ voo: novoStatus }),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+
+    setLog(`<span style="color:var(--green);font-weight:700">✓ ${fazenda}: voo definido como "${novoStatus}" em todos os talhões.</span>`);
+    await carregarDadosSupabase();
+    renderPlano();
+    renderDashboard();
+  } catch (e) {
+    setLog(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
 }
 
@@ -2152,6 +2206,7 @@ function openAdminSection() {
   document.getElementById('modalSelectSection').style.display = 'none';
   document.getElementById('modalAdminSection').style.display  = '';
   renderAdminList();
+  _popularSelectFazendaVoo();
   _popularSelectFazendaAdd();
   const htmlNomes = JSON.stringify(USUARIOS_CONFIG.map(u => u.nome.toLowerCase()).sort());
   const localNomes = JSON.stringify(adminConfig.map(u => u.nome).sort());
