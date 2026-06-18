@@ -20,6 +20,7 @@
     --green:    #4CAF72;
     --red:      #D95C5C;
     --blue:     #5A9FD4;
+    --yellow:   #E8C547;
     --text:     #E5EAE0;
     --muted:    #7A8875;
     --shadow:   0 2px 8px rgba(0,0,0,.35);
@@ -37,6 +38,7 @@
     --green:    #2D7A4A;
     --red:      #C0392B;
     --blue:     #2A6FA8;
+    --yellow:   #9C7A00;
     --text:     #1C1F1A;
     --muted:    #6B6B5F;
     --shadow:   0 2px 8px rgba(0,0,0,.10);
@@ -873,6 +875,8 @@
   .faz-tag-accent { background: rgba(200,150,12,.15);  color: var(--accent); }
   .faz-tag-blue   { background: rgba(90,159,212,.15);  color: var(--blue);   }
   .faz-tag-muted  { background: rgba(122,136,117,.15); color: var(--muted);  }
+  .faz-tag-red    { background: rgba(217,92,92,.15);   color: var(--red);    }
+  .faz-tag-yellow { background: rgba(232,197,71,.15);  color: var(--yellow); }
 
   /* ── Dashboard ── */
   .dash-page {
@@ -1844,15 +1848,6 @@ function _fmtDataBR(iso) {
   return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
-function _etapaAtual(name) {
-  const an = FAZENDAS[name]?.analise;
-  if (!an) return '—';
-  if (!an.identificacao_ok) return 'Identificação';
-  if (!an.escoamento_ok) return 'Escoamento';
-  if (!an.observacoes_ok) return 'Aguardando Observações';
-  if (!an.preparo_ok) return 'Projeto de Preparo';
-  return 'Concluído';
-}
 
 function selectFazenda(name) {
   if (!FAZENDAS[name]) return;
@@ -2276,9 +2271,9 @@ function getFazStatus(name) {
   if (!tals.length || !an) return { status: '—', cls: 'muted', ciclo: '—' };
   const ciclo = tals.find(t => t.ciclo)?.ciclo || '—';
   let status, cls;
-  if (!an.identificacao_ok)        { status = 'IDENTIFICAÇÃO'; cls = 'blue'; }
-  else if (!an.escoamento_ok)      { status = 'ESCOAMENTO';    cls = 'blue'; }
-  else if (!an.observacoes_ok)     { status = 'AGUARD. OBS';   cls = 'blue'; }
+  if (!an.identificacao_ok)        { status = 'IDENTIFICAÇÃO'; cls = 'red'; }
+  else if (!an.escoamento_ok)      { status = 'ESCOAMENTO';    cls = 'accent'; }
+  else if (!an.observacoes_ok)     { status = 'AGUARD. OBS';   cls = 'yellow'; }
   else if (!an.preparo_ok)         { status = 'PROJETO';       cls = 'blue'; }
   else                              { status = 'CONCLUÍDO';     cls = 'green'; }
   return { status, cls, ciclo };
@@ -2346,12 +2341,13 @@ function renderPlano() {
     const isPinned = pinned.includes(name);
     const nTal = Object.keys(FAZENDAS[name]?.talhoes || {}).length;
     const esc = name.replace(/'/g, "\\'");
+    const { status: etapaStatus, cls: etapaCls } = getFazStatus(name);
     return `<div class="plan-item${name === currentFaz ? ' done' : ''}" onclick="selectFazenda('${esc}')" oncontextmenu="openPlanCtxMenu(event,'${esc}')">
       <span class="plan-check" title="${isPinned ? 'Fixada manualmente' : ''}">${isPinned ? '📌' : '○'}</span>
       <div class="plan-item-info">
         <div class="plan-item-name">${name}</div>
         <div class="plan-item-meta">
-          <span class="faz-tag faz-tag-blue">${_etapaAtual(name)}</span>
+          <span class="faz-tag faz-tag-${etapaCls}">${etapaStatus}</span>
           <span style="color:var(--muted)">${nTal} tal.</span>
         </div>
       </div>
@@ -2659,6 +2655,8 @@ function getThemeColors() {
     green:  s.getPropertyValue('--green').trim()   || '#4CAF72',
     accent: s.getPropertyValue('--accent').trim()  || '#C8960C',
     blue:   s.getPropertyValue('--blue').trim()    || '#5A9FD4',
+    red:    s.getPropertyValue('--red').trim()     || '#D95C5C',
+    yellow: s.getPropertyValue('--yellow').trim()  || '#E8C547',
     muted:  s.getPropertyValue('--muted').trim()   || '#7A8875',
     text:   s.getPropertyValue('--text').trim()    || '#E5EAE0',
     border: s.getPropertyValue('--border').trim()  || '#36422F',
@@ -2883,8 +2881,8 @@ function renderDashboard() {
       datasets: [{
         label: 'Fazendas',
         data: [d.projPendenteIdent, d.projPendenteEscoamento, d.projAguardandoObs, d.projPendenteB, d.projConcluido],
-        backgroundColor: [c.blue + 'BB', c.blue + '77', c.muted + 'BB', c.accent + 'BB', c.green + 'BB'],
-        borderColor:     [c.blue, c.blue, c.muted, c.accent, c.green],
+        backgroundColor: [c.red + 'BB', c.accent + 'BB', c.yellow + 'BB', c.blue + 'BB', c.green + 'BB'],
+        borderColor:     [c.red, c.accent, c.yellow, c.blue, c.green],
         borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
       }]
     },
