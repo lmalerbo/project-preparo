@@ -2625,16 +2625,15 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtVooArg) {
     return (!filtMesArg || talYM(td) === filtMesArg) &&
            (!filtVooArg || td.voo === filtVooArg);
   });
+  const { status: fazStatus, cls: fazCls } = getFazStatus(name);
   const talRows = sorted.map(t => {
     const td = allTals[t];
-    const stCls = isTalDone(td) ? (td.exp === 'CONCLUIDO' ? 'green' : 'muted') : 'blue';
-    const stLbl = td.exp === 'CONCLUIDO' ? 'Concluído' : (td.exp === 'SEM LINHAS' || td.tipo === 'SEM LINHAS') ? 'Sem Linhas' : 'A Fazer';
-    const _ym   = talYM(td);
-    const data  = _ym ? _ym.split('-').reverse().join('/') : '—';
+    const _ym = talYM(td);
+    const data = _ym ? _ym.split('-').reverse().join('/') : '—';
     return `<tr>
       <td style="font-family:monospace;font-weight:700">${t}</td>
       <td>${td.tipo || '—'}</td>
-      <td><span class="faz-tag faz-tag-${stCls}" style="font-size:10px">${stLbl}</span></td>
+      <td><span class="faz-tag faz-tag-${fazCls}" style="font-size:10px">${fazStatus}</span></td>
       <td style="font-family:monospace">${(td.ha || 0).toFixed(1)} ha</td>
       <td>${td.estagio || '—'}</td>
       <td>${td.equipe || '—'}</td>
