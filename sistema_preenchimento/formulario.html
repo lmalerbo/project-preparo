@@ -1206,6 +1206,24 @@
         <div id="logBaseAtualizacao" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
       </div>
 
+      <div class="admin-section">
+        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Adicionar talhões a fazenda existente</label>
+        <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
+          Para quando o projeto avançou e cobriu mais talhões do que a demanda original previa.
+          Acha a área de cada talhão novo na Base de fazendas (.xlsx).
+        </div>
+        <select id="selFazendaAdd" style="width:100%;margin-bottom:8px"></select>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;flex:1">Base de fazendas (.xlsx)</span>
+          <input type="file" id="inputBaseFazendasAdd" accept=".xlsx" style="font-size:11px;max-width:170px">
+        </div>
+        <div style="margin-top:10px">
+          <button class="btn-modal-ok" onclick="buscarTalhoesNovos()">Buscar talhões novos</button>
+        </div>
+        <div id="talhoesNovosList" style="margin-top:8px"></div>
+        <div id="logTalhoesNovos" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+      </div>
+
       <div class="modal-actions">
         <button class="btn-modal-cancel" onclick="adminExportJson()">💾 Salvar e exportar usuarios.json</button>
         <button class="btn-modal-ok" onclick="closeAdminSection()">← Voltar</button>
@@ -1577,6 +1595,100 @@ async function processarAtualizacaoBase() {
     renderDashboard();
   } catch (e) {
     _logBase(`<span style="color:var(--red)">✗ ${e.message}</span>`);
+  }
+}
+
+// ── Adicionar talhões a uma fazenda já existente (escopo cresceu no meio do projeto) ──
+function _popularSelectFazendaAdd() {
+  const sel = document.getElementById('selFazendaAdd');
+  if (!sel) return;
+  sel.innerHTML = FAZENDA_NAMES.map(n => `<option value="${n}">${n} (cod ${FAZENDAS[n].cod})</option>`).join('');
+}
+
+function _logTalhoesNovos(msg) {
+  const el = document.getElementById('logTalhoesNovos');
+  if (el) el.insertAdjacentHTML('beforeend', `<div>${msg}</div>`);
+}
+
+async function buscarTalhoesNovos() {
+  const fazenda = document.getElementById('selFazendaAdd')?.value;
+  const fFaz = document.getElementById('inputBaseFazendasAdd')?.files?.[0];
+  document.getElementById('logTalhoesNovos').innerHTML = '';
+  document.getElementById('talhoesNovosList').innerHTML = '';
+
+  if (!fazenda || !FAZENDAS[fazenda]) { _logTalhoesNovos('<span style="color:var(--red)">Selecione uma fazenda.</span>'); return; }
+  if (!fFaz) { _logTalhoesNovos('<span style="color:var(--red)">Selecione o arquivo da base de fazendas.</span>'); return; }
+
+  try {
+    const buf = await fFaz.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { raw: true });
+
+    const codFaz = FAZENDAS[fazenda].cod;
+    const existentes = new Set(Object.keys(FAZENDAS[fazenda].talhoes).map(Number));
+    const novos = [];
+    for (const r of rows) {
+      const cf = Number(r['SECAO']);
+      const tal = Number(r['TALHAO']);
+      if (cf !== codFaz || isNaN(tal) || existentes.has(tal)) continue;
+      const areaHa = Math.round((Number(r['AREA_PROD']) || 0) * 100) / 100;
+      novos.push({ talhao: tal, area_ha: areaHa });
+    }
+    novos.sort((a, b) => a.talhao - b.talhao);
+
+    if (!novos.length) { _logTalhoesNovos('Nenhum talhão novo encontrado para esta fazenda na base enviada.'); return; }
+
+    const esc = fazenda.replace(/'/g, "\\'");
+    document.getElementById('talhoesNovosList').innerHTML = novos.map(n => `
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0">
+        <input type="checkbox" class="chkTalhaoNovo" value="${n.talhao}" data-area="${n.area_ha}" checked>
+        Talhão ${n.talhao} — ${n.area_ha.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ha
+      </label>`).join('') +
+      `<button class="btn-modal-ok" style="margin-top:8px" onclick="adicionarTalhoesSelecionados('${esc}')">Adicionar selecionados</button>`;
+  } catch (e) {
+    _logTalhoesNovos(`<span style="color:var(--red)">✗ ${e.message}</span>`);
+  }
+}
+
+async function adicionarTalhoesSelecionados(fazenda) {
+  const d = FAZENDAS[fazenda];
+  if (!d) return;
+  const checks = [...document.querySelectorAll('.chkTalhaoNovo:checked')];
+  if (!checks.length) { _logTalhoesNovos('<span style="color:var(--red)">Nenhum talhão selecionado.</span>'); return; }
+
+  // Herda período/estágio/equipe/voo de um talhão já existente da mesma fazenda (mesma demanda original).
+  const base = Object.values(d.talhoes)[0] || {};
+
+  const rows = checks.map(chk => {
+    const talhao = Number(chk.value);
+    const areaHa = Number(chk.dataset.area) || 0;
+    const layer = Number(`${d.cod}${String(talhao).padStart(3, '0')}`);
+    return {
+      layer, cod_faz: d.cod, fazenda, talhao, area_ha: areaHa,
+      periodo_op: base.semana ?? null, estagio: base.estagio || '',
+      equipe: base.equipe || '', voo: base.voo || '',
+      status: '', tipo_linha: '', ciclo: '',
+    };
+  });
+
+  try {
+    _logTalhoesNovos(`Adicionando ${rows.length} talhão(ões)...`);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/programacao`, {
+      method: 'POST',
+      headers: _sbHeaders({ 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' }),
+      body: JSON.stringify(rows),
+    });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+
+    _logTalhoesNovos('<span style="color:var(--green);font-weight:700">Adicionado!</span>');
+    document.getElementById('talhoesNovosList').innerHTML = '';
+    await carregarDadosSupabase();
+    renderPlano();
+    renderDashboard();
+    if (currentFaz === fazenda) selectFazenda(fazenda);
+  } catch (e) {
+    _logTalhoesNovos(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
 }
 
@@ -2042,6 +2154,7 @@ function openAdminSection() {
   document.getElementById('modalSelectSection').style.display = 'none';
   document.getElementById('modalAdminSection').style.display  = '';
   renderAdminList();
+  _popularSelectFazendaAdd();
   const htmlNomes = JSON.stringify(USUARIOS_CONFIG.map(u => u.nome.toLowerCase()).sort());
   const localNomes = JSON.stringify(adminConfig.map(u => u.nome).sort());
   const htmlPerfis = JSON.stringify(USUARIOS_CONFIG.map(u => ({n: u.nome.toLowerCase(), p: [...(u.perfis||[])].sort()})).sort((a,b)=>a.n.localeCompare(b.n)));

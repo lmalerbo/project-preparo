@@ -106,6 +106,13 @@ Para usar o script:
 > (ex: "FRAN TERRA", "MEGACENTER") — isso é importado como `equipe` (texto livre), com seu próprio
 > filtro, coluna na consulta e gráfico "Ha por Equipe" no dashboard.
 
+Quando o escopo de uma fazenda cresce no meio do projeto (demanda original previa só alguns
+talhões, mas o projeto acabou cobrindo mais), não é preciso reeditar a planilha de demanda: em
+"⚙ Gerenciar → Adicionar talhões a fazenda existente", escolha a fazenda, envie só a Base de
+fazendas (.xlsx) e o sistema lista os talhões que existem nela mas ainda não estão na programação
+da fazenda — a área de cada um vem da própria base, e período/estágio/equipe/voo são herdados de
+um talhão já existente da mesma fazenda.
+
 ## 6. Fluxo dos analistas (aba "Registros")
 
 Diferente da colheita (preenchimento por talhão, em campo), o preparo é trabalhado por dois
