@@ -1795,7 +1795,7 @@ function _fazendasParaAnalistaB() {
   });
 }
 
-// 'tudo' | 'a' | 'b' — qual lote de tarefas o analista quer ver na fila
+// 'tudo' ou um status específico (ex: 'IDENTIFICAÇÃO', 'SEM SOLICITAÇÃO', ...)
 let _filaFiltro = 'tudo';
 
 function _setFilaFiltro(f) {
@@ -1803,14 +1803,17 @@ function _setFilaFiltro(f) {
   renderPlano();
 }
 
-function _filaAtual() {
+// Todas as fazendas que o usuário tem permissão de ver na fila, sem filtro de status.
+function _filaBase() {
   const perfis = getUserPerfis(currentUser);
   const queueA = perfis.includes('analista_a') ? _fazendasParaAnalistaA() : [];
   const queueB = perfis.includes('analista_b') ? _fazendasParaAnalistaB() : [];
-  let queue;
-  if (_filaFiltro === 'a') queue = queueA;
-  else if (_filaFiltro === 'b') queue = queueB;
-  else queue = [...queueA, ...queueB];
+  return [...new Set([...queueA, ...queueB])];
+}
+
+function _filaAtual() {
+  const base = _filaBase();
+  const queue = _filaFiltro === 'tudo' ? base : base.filter(n => getFazStatus(n).status === _filaFiltro);
   return queue.sort();
 }
 
@@ -2320,22 +2323,37 @@ function limparPlano() {
   renderPlano();
 }
 
-function renderPlano() {
-  const perfis = getUserPerfis(currentUser);
-  const podeA = perfis.includes('analista_a');
-  const podeB = perfis.includes('analista_b');
+// Etapas acionáveis primeiro (o analista pode agir agora); bloqueios de voo depois
+// (servem só para acompanhamento — nada a fazer neles ainda).
+const FILA_STATUS_ORDER = ['IDENTIFICAÇÃO', 'ESCOAMENTO', 'AGUARD. OBS', 'PROJETO'];
 
+function renderPlano() {
+  const base = _filaBase();
   const tabsEl = document.getElementById('filaTabs');
-  if (podeA && podeB) {
-    const totA = _fazendasParaAnalistaA().length;
-    const totB = _fazendasParaAnalistaB().length;
-    tabsEl.innerHTML = `
-      <button class="fila-tab${_filaFiltro === 'tudo' ? ' active' : ''}" onclick="_setFilaFiltro('tudo')">Tudo <span class="fila-tab-count">${totA + totB}</span></button>
-      <button class="fila-tab${_filaFiltro === 'a' ? ' active' : ''}" onclick="_setFilaFiltro('a')">Identif./Escoam. <span class="fila-tab-count">${totA}</span></button>
-      <button class="fila-tab${_filaFiltro === 'b' ? ' active' : ''}" onclick="_setFilaFiltro('b')">Preparo <span class="fila-tab-count">${totB}</span></button>`;
-  } else {
+
+  if (!base.length) {
     tabsEl.innerHTML = '';
     _filaFiltro = 'tudo';
+  } else {
+    const counts = {};
+    base.forEach(n => {
+      const s = getFazStatus(n).status;
+      counts[s] = (counts[s] || 0) + 1;
+    });
+    const statusList = Object.keys(counts).sort((a, b) => {
+      const ia = FILA_STATUS_ORDER.indexOf(a), ib = FILA_STATUS_ORDER.indexOf(b);
+      if (ia === -1 && ib === -1) return counts[b] - counts[a];
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    if (_filaFiltro !== 'tudo' && !statusList.includes(_filaFiltro)) _filaFiltro = 'tudo';
+    tabsEl.innerHTML =
+      `<button class="fila-tab${_filaFiltro === 'tudo' ? ' active' : ''}" onclick="_setFilaFiltro('tudo')">Tudo <span class="fila-tab-count">${base.length}</span></button>` +
+      statusList.map(s => {
+        const esc = s.replace(/'/g, "\\'");
+        return `<button class="fila-tab${_filaFiltro === s ? ' active' : ''}" onclick="_setFilaFiltro('${esc}')">${s} <span class="fila-tab-count">${counts[s]}</span></button>`;
+      }).join('');
   }
 
   const all = _listaFila();
