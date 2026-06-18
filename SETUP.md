@@ -26,7 +26,8 @@ project-preparo/
             ├── 0002_programacao_insert_anon.sql
             ├── 0003_add_equipe_voo.sql
             ├── 0004_voo_status.sql              ← sync do portal dronemgmt (engine/atualizar_voos.py)
-            └── 0005_fazenda_analise.sql         ← acompanhamento do fluxo de analistas, por fazenda
+            ├── 0005_fazenda_analise.sql         ← acompanhamento do fluxo de analistas, por fazenda
+            └── 0006_fazenda_analise_observacoes.sql ← etapa "Aguardando observações" (entre escoamento e projeto)
 ```
 
 ## 1. GitHub — configurar Pages
@@ -113,10 +114,12 @@ analistas de escritório, em sequência, **por fazenda** (não por talhão):
 1. **Analista A** — vê as fazendas pendentes de **identificação** e/ou **escoamento**. Marca cada
    etapa como OK (com upload opcional do PDF de escoamento).
 2. **Analista B** — só vê (e só consegue agir) numa fazenda depois que identificação **e**
-   escoamento estiverem OK. Marca o **projeto de preparo** como OK (com upload opcional do
-   `.dwg`/`.zip`).
+   escoamento estiverem OK. Primeiro marca **aguardando observações** como OK (sem upload —
+   confirma que recebeu/tratou as observações), depois marca o **projeto de preparo** como OK
+   (com upload opcional do `.dwg`/`.zip`).
 
-Isso é controlado pela tabela `fazenda_analise` (migration `0005`, uma linha por `cod_faz`) e por
+Isso é controlado pela tabela `fazenda_analise` (migrations `0005` e `0006`, uma linha por
+`cod_faz`) e por
 dois novos perfis de usuário — `analista_a` e `analista_b` — geridos em "⚙ Gerenciar" (substituem o
 perfil antigo `preenchimento`, que era espelhado 1:1 da colheita e não se aplicava ao preparo).
 

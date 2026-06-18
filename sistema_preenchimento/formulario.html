@@ -1306,6 +1306,9 @@ async function carregarDadosSupabase() {
             escoamento_ok:    !!an.escoamento_ok,
             escoamento_usuario: an.escoamento_usuario || '',
             escoamento_data: an.escoamento_data || null,
+            observacoes_ok:    !!an.observacoes_ok,
+            observacoes_usuario: an.observacoes_usuario || '',
+            observacoes_data: an.observacoes_data || null,
             preparo_ok:       !!an.preparo_ok,
             preparo_usuario: an.preparo_usuario || '',
             preparo_data: an.preparo_data || null,
@@ -1730,6 +1733,7 @@ function _etapaAtual(name) {
   const an = FAZENDAS[name]?.analise;
   if (!an) return '—';
   if (!(an.identificacao_ok && an.escoamento_ok)) return 'Identificação/Escoamento';
+  if (!an.observacoes_ok) return 'Aguardando Observações';
   if (!an.preparo_ok) return 'Projeto de Preparo';
   return 'Concluído';
 }
@@ -1821,24 +1825,40 @@ function renderPainelAnalise(name) {
   if (podeB) {
     if (!(an.identificacao_ok && an.escoamento_ok)) {
       html += `<div class="analise-stage muted">Aguardando identificação e escoamento para liberar o projeto de preparo.</div>`;
-    } else if (an.preparo_ok) {
-      html += _cardConcluido('Projeto de Preparo', esc, 'preparo', an.preparo_usuario, an.preparo_data);
     } else {
-      html += `
-      <div class="analise-stage">
-        <div class="analise-stage-header">
-          <span>Projeto de Preparo</span>
-          <span class="faz-tag faz-tag-blue">Pendente</span>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Os 3 arquivos são obrigatórios para marcar como OK:</div>
-        ${_filePickerHtml('filePreparoDwg', '.dwg', 'Projeto (.dwg)')}
-        ${_filePickerHtml('filePreparoZip', '.zip', 'Exportação (.zip)')}
-        ${_filePickerHtml('filePreparoPdf', '.pdf', 'Mapa Sistematização (.pdf)')}
-        <button class="btn-modal-ok" id="btnPreparoOk" disabled
-                onclick="salvarEtapaAnalise('${esc}','preparo',true,['filePreparoDwg','filePreparoZip','filePreparoPdf'])">
-          Marcar como OK
-        </button>
-      </div>`;
+      html += an.observacoes_ok
+        ? _cardConcluido('Observações', esc, 'observacoes', an.observacoes_usuario, an.observacoes_data)
+        : `
+        <div class="analise-stage">
+          <div class="analise-stage-header">
+            <span>Aguardando Observações</span>
+            <span class="faz-tag faz-tag-blue">Pendente</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Confirme que as observações foram recebidas/tratadas para liberar o projeto de preparo.</div>
+          <button class="btn-modal-ok" onclick="salvarEtapaAnalise('${esc}','observacoes',true)">Marcar como OK</button>
+        </div>`;
+
+      if (!an.observacoes_ok) {
+        html += `<div class="analise-stage muted">Aguardando observações para liberar o projeto de preparo.</div>`;
+      } else if (an.preparo_ok) {
+        html += _cardConcluido('Projeto de Preparo', esc, 'preparo', an.preparo_usuario, an.preparo_data);
+      } else {
+        html += `
+        <div class="analise-stage">
+          <div class="analise-stage-header">
+            <span>Projeto de Preparo</span>
+            <span class="faz-tag faz-tag-blue">Pendente</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Os 3 arquivos são obrigatórios para marcar como OK:</div>
+          ${_filePickerHtml('filePreparoDwg', '.dwg', 'Projeto (.dwg)')}
+          ${_filePickerHtml('filePreparoZip', '.zip', 'Exportação (.zip)')}
+          ${_filePickerHtml('filePreparoPdf', '.pdf', 'Mapa Sistematização (.pdf)')}
+          <button class="btn-modal-ok" id="btnPreparoOk" disabled
+                  onclick="salvarEtapaAnalise('${esc}','preparo',true,['filePreparoDwg','filePreparoZip','filePreparoPdf'])">
+            Marcar como OK
+          </button>
+        </div>`;
+      }
     }
   }
 
@@ -2567,15 +2587,22 @@ function computeDash() {
   });
 
   const projPendenteA = _fazendasParaAnalistaA().length;
-  const projPendenteB = _fazendasParaAnalistaB().length;
-  const projConcluido = FAZENDA_NAMES.length - projPendenteA - projPendenteB;
+  const projAguardandoObs = FAZENDA_NAMES.filter(n => {
+    const an = FAZENDAS[n].analise;
+    return an.identificacao_ok && an.escoamento_ok && !an.observacoes_ok;
+  }).length;
+  const projPendenteB = FAZENDA_NAMES.filter(n => {
+    const an = FAZENDAS[n].analise;
+    return an.identificacao_ok && an.escoamento_ok && an.observacoes_ok && !an.preparo_ok;
+  }).length;
+  const projConcluido = FAZENDA_NAMES.length - projPendenteA - projAguardandoObs - projPendenteB;
 
   return {
     haTotal, haConc, haFazer,
     fazTotal: FAZENDA_NAMES.length,
     pct: haTotal > 0 ? Math.round(haConc / haTotal * 100) : 0,
     byMonth, byEquipe, byVoo,
-    projPendenteA, projPendenteB, projConcluido,
+    projPendenteA, projAguardandoObs, projPendenteB, projConcluido,
   };
 }
 
@@ -2730,12 +2757,12 @@ function renderDashboard() {
   _chartProjetos = new Chart(document.getElementById('chartProjetos'), {
     type: 'bar',
     data: {
-      labels: ['Identificação/Escoamento', 'Projeto de Preparo', 'Concluído'],
+      labels: ['Identificação/Escoamento', 'Aguardando Observações', 'Projeto de Preparo', 'Concluído'],
       datasets: [{
         label: 'Fazendas',
-        data: [d.projPendenteA, d.projPendenteB, d.projConcluido],
-        backgroundColor: [c.blue + 'BB', c.accent + 'BB', c.green + 'BB'],
-        borderColor:     [c.blue, c.accent, c.green],
+        data: [d.projPendenteA, d.projAguardandoObs, d.projPendenteB, d.projConcluido],
+        backgroundColor: [c.blue + 'BB', c.muted + 'BB', c.accent + 'BB', c.green + 'BB'],
+        borderColor:     [c.blue, c.muted, c.accent, c.green],
         borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
       }]
     },
