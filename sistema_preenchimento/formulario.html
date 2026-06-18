@@ -1097,8 +1097,8 @@
       <select id="cFiltroMes" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os meses —</option>
       </select>
-      <select id="cFiltroEquipe" class="mes-filter-select" onchange="renderConsulta()">
-        <option value="">— todas as equipes —</option>
+      <select id="cFiltroVoo" class="mes-filter-select" onchange="renderConsulta()">
+        <option value="">— todos os status de voo —</option>
       </select>
       <select id="cFiltroStatus" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os status —</option>
@@ -2285,12 +2285,12 @@ function debouncedRenderConsulta() {
   _consultaDebounceTimer = setTimeout(renderConsulta, 200);
 }
 function populateConsultaFilters() {
-  const meses = new Set(), equipes = new Set();
+  const meses = new Set(), voos = new Set();
   FAZENDA_NAMES.forEach(n => {
     Object.values(FAZENDAS[n].talhoes).forEach(t => {
       const ym = talYM(t);
       if (ym) meses.add(ym);
-      if (t.equipe) equipes.add(t.equipe);
+      if (t.voo) voos.add(t.voo);
     });
   });
   const selMes = document.getElementById('cFiltroMes');
@@ -2303,17 +2303,18 @@ function populateConsultaFilters() {
     }).join('');
   selMes.value = curMes;
 
-  const selEquipe = document.getElementById('cFiltroEquipe');
-  const curEquipe = selEquipe.value;
-  selEquipe.innerHTML = '<option value="">— todas as equipes —</option>' +
-    [...equipes].sort().map(eq => `<option value="${eq}">${eq}</option>`).join('');
-  selEquipe.value = curEquipe;
+  const selVoo = document.getElementById('cFiltroVoo');
+  const curVoo = selVoo.value;
+  selVoo.innerHTML = '<option value="">— todos os status de voo —</option>' +
+    [...voos].sort().map(v => `<option value="${v}">${v}</option>`).join('');
+  selVoo.value = curVoo;
 }
 
 function limparFiltrosConsulta() {
-  document.getElementById('cFiltroMes').value    = '';
-  document.getElementById('cFiltroEquipe').value = '';
-  document.getElementById('cFiltroStatus').value = '';
+  document.getElementById('consultaSearch').value = '';
+  document.getElementById('cFiltroMes').value      = '';
+  document.getElementById('cFiltroVoo').value      = '';
+  document.getElementById('cFiltroStatus').value   = '';
   renderConsulta();
 }
 
@@ -2373,11 +2374,11 @@ function renderConsulta(page) {
 
   const q          = (document.getElementById('consultaSearch')?.value || '').toLowerCase();
   const filtMes    = document.getElementById('cFiltroMes')?.value    || '';
-  const filtEquipe = document.getElementById('cFiltroEquipe')?.value || '';
+  const filtVoo    = document.getElementById('cFiltroVoo')?.value    || '';
   const filtStatus = document.getElementById('cFiltroStatus')?.value || '';
 
   document.getElementById('cFiltroMes').classList.toggle('active', !!filtMes);
-  document.getElementById('cFiltroEquipe').classList.toggle('active', !!filtEquipe);
+  document.getElementById('cFiltroVoo').classList.toggle('active', !!filtVoo);
   document.getElementById('cFiltroStatus').classList.toggle('active', !!filtStatus);
 
   let names = q
@@ -2386,8 +2387,8 @@ function renderConsulta(page) {
 
   if (filtMes) names = names.filter(n =>
     Object.values(FAZENDAS[n].talhoes).some(t => talYM(t) === filtMes));
-  if (filtEquipe) names = names.filter(n =>
-    Object.values(FAZENDAS[n].talhoes).some(t => t.equipe === filtEquipe));
+  if (filtVoo) names = names.filter(n =>
+    Object.values(FAZENDAS[n].talhoes).some(t => t.voo === filtVoo));
   if (filtStatus) names = names.filter(n => getFazStatus(n).status === filtStatus);
 
   _consultaNames = names;
@@ -2409,8 +2410,8 @@ function renderConsulta(page) {
     const d = FAZENDAS[name];
     const allTals = Object.values(d.talhoes);
     const tals = allTals.filter(t =>
-      (!filtMes    || talYM(t) === filtMes) &&
-      (!filtEquipe || t.equipe === filtEquipe)
+      (!filtMes || talYM(t) === filtMes) &&
+      (!filtVoo || t.voo === filtVoo)
     );
     const totalTals = tals.length;
     const conc  = tals.filter(isTalDone).length;
@@ -2421,7 +2422,7 @@ function renderConsulta(page) {
     const cbTd = _consultaSelectMode
       ? `<td class="consulta-cb" onclick="event.stopPropagation()"><input type="checkbox" ${_consultaSelected.has(name) ? 'checked' : ''} onclick="toggleConsultaSel('${escName}',this)"></td>`
       : '';
-    return `<tr class="consulta-faz-row${_consultaSelected.has(name) ? ' selected' : ''}" onclick="toggleFazDetail('${escName}',this,'${filtMes}','${filtEquipe}')" oncontextmenu="openCtxMenu(event,'${escName}')" id="cfr-${CSS.escape(name)}">
+    return `<tr class="consulta-faz-row${_consultaSelected.has(name) ? ' selected' : ''}" onclick="toggleFazDetail('${escName}',this,'${filtMes}','${filtVoo}')" oncontextmenu="openCtxMenu(event,'${escName}')" id="cfr-${CSS.escape(name)}">
       ${cbTd}
       <td><span class="consulta-expand-icon" id="cfi-${CSS.escape(name)}">▶</span><strong>${name}</strong></td>
       <td style="font-family:monospace">${d.cod}</td>
@@ -2458,7 +2459,7 @@ function renderConsulta(page) {
   </div>`;
 }
 
-function toggleFazDetail(name, rowEl, filtMesArg, filtEquipeArg) {
+function toggleFazDetail(name, rowEl, filtMesArg, filtVooArg) {
   const esc = CSS.escape(name);
   const detailRow = document.getElementById('cdr-' + esc);
   const inner     = document.getElementById('cdinner-' + esc);
@@ -2482,8 +2483,8 @@ function toggleFazDetail(name, rowEl, filtMesArg, filtEquipeArg) {
   const allTals = FAZENDAS[name].talhoes;
   const sorted = Object.keys(allTals).sort((a, b) => +a - +b).filter(t => {
     const td = allTals[t];
-    return (!filtMesArg    || talYM(td) === filtMesArg) &&
-           (!filtEquipeArg || td.equipe === filtEquipeArg);
+    return (!filtMesArg || talYM(td) === filtMesArg) &&
+           (!filtVooArg || td.voo === filtVooArg);
   });
   const talRows = sorted.map(t => {
     const td = allTals[t];
