@@ -1102,7 +1102,9 @@
       </select>
       <select id="cFiltroStatus" class="mes-filter-select" onchange="renderConsulta()">
         <option value="">— todos os status —</option>
-        <option value="A FAZER">A Fazer</option>
+        <option value="IDENTIFICAÇÃO/ESCOAMENTO">Identificação/Escoamento</option>
+        <option value="AGUARD. OBS">Aguard. Obs</option>
+        <option value="PROJETO">Projeto</option>
         <option value="CONCLUÍDO">Concluído</option>
       </select>
       <button class="faz-filter-btn" id="btnConsultaSel" onclick="toggleConsultaSelectMode()">&#9744; Selecionar</button>
@@ -2268,13 +2270,14 @@ function setView(name) {
 // ── Status por fazenda ────────────────────────────────────────────────────
 function getFazStatus(name) {
   const tals = Object.values(FAZENDAS[name]?.talhoes || {});
-  if (!tals.length) return { status: '—', cls: 'muted', ciclo: '—' };
-  const total  = tals.length;
-  const done   = tals.filter(t => t.done).length;
-  const ciclo  = tals.find(t => t.ciclo)?.ciclo || '—';
+  const an = FAZENDAS[name]?.analise;
+  if (!tals.length || !an) return { status: '—', cls: 'muted', ciclo: '—' };
+  const ciclo = tals.find(t => t.ciclo)?.ciclo || '—';
   let status, cls;
-  if (done === total)  { status = 'CONCLUÍDO'; cls = 'green'; }
-  else                 { status = 'A FAZER';   cls = 'blue';  }
+  if (!(an.identificacao_ok && an.escoamento_ok)) { status = 'IDENTIFICAÇÃO/ESCOAMENTO'; cls = 'blue'; }
+  else if (!an.observacoes_ok)                    { status = 'AGUARD. OBS';             cls = 'blue'; }
+  else if (!an.preparo_ok)                         { status = 'PROJETO';                 cls = 'blue'; }
+  else                                              { status = 'CONCLUÍDO';               cls = 'green'; }
   return { status, cls, ciclo };
 }
 
