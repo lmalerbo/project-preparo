@@ -33,12 +33,19 @@ function ghHeaders(env, extra) {
   }, extra || {});
 }
 
-// O GitHub renomeia o asset ao salvar (ex: espaço vira ponto: "CACHOEIRA 2" →
-// "CACHOEIRA.2"), então a comparação direta de nome falha e o asset antigo nunca
-// é apagado antes do reenvio — o upload novo é rejeitado como "already_exists".
-// Normaliza removendo tudo que não é letra/número antes de comparar.
+// O GitHub renomeia o asset ao salvar (espaço vira ponto: "CACHOEIRA 2" →
+// "CACHOEIRA.2") e nomes antigos podem ter sido salvos sem acento (ex:
+// "Sistematizacao" vs "Sistematização" do arquivo novo). Sem normalizar os dois
+// lados do mesmo jeito, a comparação falha, o asset antigo nunca é apagado antes
+// do reenvio, e o upload novo é rejeitado como "already_exists". Decompõe
+// acentos (NFD) e remove tudo que não é letra/número antes de comparar.
+const COMBINING_MARKS_RE = new RegExp('[' + String.fromCharCode(0x300) + '-' + String.fromCharCode(0x36f) + ']', 'g');
 function normAssetName(name) {
-  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+  return String(name)
+    .normalize('NFD')
+    .replace(COMBINING_MARKS_RE, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
 
 async function getOrCreateRelease(env, tag, name) {
