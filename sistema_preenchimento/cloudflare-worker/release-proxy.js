@@ -33,6 +33,14 @@ function ghHeaders(env, extra) {
   }, extra || {});
 }
 
+// O GitHub renomeia o asset ao salvar (ex: espaço vira ponto: "CACHOEIRA 2" →
+// "CACHOEIRA.2"), então a comparação direta de nome falha e o asset antigo nunca
+// é apagado antes do reenvio — o upload novo é rejeitado como "already_exists".
+// Normaliza removendo tudo que não é letra/número antes de comparar.
+function normAssetName(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 async function getOrCreateRelease(env, tag, name) {
   let res = await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/tags/${tag}`,
     { headers: ghHeaders(env) });
@@ -65,7 +73,7 @@ export default {
 
         const release = await getOrCreateRelease(env, tag, name);
 
-        const existente = (release.assets || []).find(a => a.name === filename);
+        const existente = (release.assets || []).find(a => normAssetName(a.name) === normAssetName(filename));
         if (existente) {
           await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/assets/${existente.id}`,
             { method: 'DELETE', headers: ghHeaders(env) });
