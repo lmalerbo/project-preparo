@@ -1167,16 +1167,17 @@
     <!-- Seção: Admin / Gerenciar usuários -->
     <div id="modalAdminSection" style="display:none">
       <h3>Gerenciar</h3>
-      <div id="adminSyncWarning" style="display:none;color:var(--accent);font-size:11px;
-           padding:6px 8px;border:1px solid var(--accent);border-radius:4px;margin-bottom:8px">
-        ⚠ Alterações locais não aplicadas a todos — exporte e rode ATUALIZAR.bat para propagar.
-      </div>
 
       <div class="admin-category open" id="catUsuarios">
         <div class="admin-category-header" onclick="_toggleAdminCategory(this)">
           Usuários <span class="admin-category-chevron">▼</span>
         </div>
         <div class="admin-category-body">
+          <div id="adminSyncWarning" style="display:none;color:var(--accent);font-size:11px;
+               padding:6px 8px;border:1px solid var(--accent);border-radius:4px;margin-bottom:8px">
+            ⚠ Usuários/perfis locais (deste navegador) diferentes dos salvos no banco —
+            exporte e rode ATUALIZAR.bat para propagar. Não tem relação com voo/dronemgmt.
+          </div>
           <div id="adminUserList" style="max-height:220px;overflow-y:auto"></div>
           <div class="admin-section">
             <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Novo usuário</label>
@@ -1673,6 +1674,11 @@ async function processarAtualizacaoBase() {
 // O workflow já roda sozinho de hora em hora (.github/workflows/atualizar-voos.yml);
 // isso só dá um jeito de forçar uma rodada agora, sem esperar, pelo navegador.
 let _vooSyncPollTimer = null;
+// id do último run ANTES de clicar "Sincronizar agora" — null quando não há disparo pendente
+// nesta sessão. Sem isso, o primeiro check do polling pega o run ANTERIOR (já concluído),
+// acha que terminou na hora e recarrega a tela com dados ainda velhos, sem nunca acompanhar
+// o run novo de verdade até ele de fato concluir.
+let _vooSyncBaselineRunId = null;
 
 function _fmtRelativo(iso) {
   const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
@@ -1703,10 +1709,25 @@ async function _carregarStatusVoo() {
     if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
     const run = (data.workflow_runs || [])[0];
-    _renderVooSyncStatus(run);
+
+    const aguardandoNovoRun = _vooSyncBaselineRunId !== null && run && run.id === _vooSyncBaselineRunId;
+    if (aguardandoNovoRun) {
+      if (el) el.innerHTML = '<span style="color:var(--accent);font-weight:700">Aguardando início…</span>';
+    } else {
+      _renderVooSyncStatus(run);
+    }
+
     if (_vooSyncPollTimer) { clearInterval(_vooSyncPollTimer); _vooSyncPollTimer = null; }
-    if (run && run.status !== 'completed') {
+
+    if (aguardandoNovoRun || (run && run.status !== 'completed')) {
       _vooSyncPollTimer = setInterval(_carregarStatusVoo, 15000);
+    } else if (_vooSyncBaselineRunId !== null) {
+      // run novo (id mudou desde o disparo) e já concluído — dados frescos no banco,
+      // recarrega a tela sem precisar que o usuário dê F5.
+      _vooSyncBaselineRunId = null;
+      await carregarDadosSupabase();
+      renderPlano();
+      renderDashboard();
     }
   } catch (e) {
     if (el) el.innerHTML = `<span style="color:var(--muted)">Não foi possível carregar o status (${e.message}).</span>`;
@@ -1719,10 +1740,13 @@ async function sincronizarVoosAgora() {
   setLog('Disparando sincronização...');
   try {
     const base = RELEASE_PROXY_URL.replace(/\/+$/, '');
+    const statusRes = await fetch(`${base}/voos-status`);
+    _vooSyncBaselineRunId = statusRes.ok ? ((await statusRes.json()).workflow_runs || [])[0]?.id ?? null : null;
+
     const res = await fetch(`${base}/trigger-voos`, { method: 'POST' });
     if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
     setLog('<span style="color:var(--green);font-weight:700">✓ Disparada! Leva alguns minutos — acompanhe abaixo.</span>');
-    setTimeout(_carregarStatusVoo, 4000);
+    setTimeout(_carregarStatusVoo, 5000);
   } catch (e) {
     setLog(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
