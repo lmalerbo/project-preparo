@@ -122,6 +122,41 @@
   }
   .btn-download:hover { opacity: .85; }
 
+  .btn-view {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer;
+    transition: border-color .15s; font-family: inherit;
+  }
+  .btn-view:hover { border-color: var(--accent); color: var(--accent); }
+  .asset-actions { display: flex; gap: 8px; }
+
+  .viewer-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    z-index: 1000; align-items: center; justify-content: center;
+  }
+  .viewer-overlay.open { display: flex; }
+  .viewer-box {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    width: 90vw; height: 90vh; max-width: 1100px; display: flex; flex-direction: column;
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .viewer-header {
+    padding: 12px 16px; background: var(--surface2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .viewer-title { font-size: 13px; font-weight: 700; font-family: monospace; }
+  .viewer-close {
+    background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer;
+    line-height: 1; padding: 0 4px;
+  }
+  .viewer-close:hover { color: var(--red); }
+  .viewer-body { flex: 1; position: relative; }
+  .viewer-body iframe { width: 100%; height: 100%; border: none; }
+  .viewer-status {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 13px; flex-direction: column; gap: 10px;
+  }
+
   .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
   .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: .3; }
   .empty-text { font-size: 14px; }
@@ -156,12 +191,27 @@
   <div id="content"><div class="loading">Carregando releases...</div></div>
 </div>
 
+<div class="viewer-overlay" id="viewerOverlay" onclick="if(event.target===this)fecharVisualizador()">
+  <div class="viewer-box">
+    <div class="viewer-header">
+      <span class="viewer-title" id="viewerTitle">—</span>
+      <button class="viewer-close" onclick="fecharVisualizador()">&times;</button>
+    </div>
+    <div class="viewer-body" id="viewerBody"></div>
+  </div>
+</div>
+
 <script>
 const GH_OWNER = 'lmalerbo';
 const GH_REPO  = 'project-preparo';
 const API_URL  = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases?per_page=100`;
+const RELEASE_PROXY_URL = 'https://project-preparo-proxy.leonardo-malerbo.workers.dev/';
 
 let allReleases = [];
+
+function isPdf(name) {
+  return name.split('.').pop().toLowerCase() === 'pdf';
+}
 
 function fileIcon(name) {
   const ext = name.split('.').pop().toLowerCase();
@@ -204,7 +254,10 @@ function renderReleases(releases) {
             <div class="asset-size">${fileLabel(a.name)} · ${fmtBytes(a.size)}</div>
           </div>
         </div>
-        <a class="btn-download" href="${a.browser_download_url}" download>Baixar</a>
+        <div class="asset-actions">
+          ${isPdf(a.name) ? `<button class="btn-view" onclick="visualizarArquivo('${a.browser_download_url}','${a.name.replace(/'/g,"\\'")}')">Visualizar</button>` : ''}
+          <a class="btn-download" href="${a.browser_download_url}" download>Baixar</a>
+        </div>
       </div>`).join('') : `<div style="color:var(--muted);font-size:13px">Nenhum arquivo nesta fazenda.</div>`;
 
     return `
@@ -229,6 +282,36 @@ function renderReleases(releases) {
 function toggleCard(card) {
   card.classList.toggle('open');
 }
+
+// O GitHub serve os assets com Content-Disposition: attachment (até PDF) e sem
+// CORS, então nem abrir a URL direto nem buscar via fetch() do navegador funciona
+// para visualizar. O Worker (release-proxy.js) busca o arquivo no servidor — sem
+// restrição de CORS — e devolve com Content-Disposition: inline, então um simples
+// <iframe src="...worker.../view?..."> já renderiza o PDF.
+function visualizarArquivo(url, nome) {
+  const overlay = document.getElementById('viewerOverlay');
+  const body = document.getElementById('viewerBody');
+  document.getElementById('viewerTitle').textContent = nome;
+  const viewUrl = `${RELEASE_PROXY_URL.replace(/\/+$/, '')}/view?url=${encodeURIComponent(url)}&name=${encodeURIComponent(nome)}`;
+  body.innerHTML = `<iframe src="${viewUrl}" onerror="_falhaVisualizador('${url.replace(/'/g,"\\'")}','${nome.replace(/'/g,"\\'")}')"></iframe>`;
+  overlay.classList.add('open');
+}
+
+function _falhaVisualizador(url, nome) {
+  document.getElementById('viewerBody').innerHTML = `<div class="viewer-status">
+    <span>Não foi possível visualizar este arquivo.</span>
+    <a class="btn-download" href="${url}" download>⬇ Baixar em vez disso</a>
+  </div>`;
+}
+
+function fecharVisualizador() {
+  document.getElementById('viewerOverlay').classList.remove('open');
+  document.getElementById('viewerBody').innerHTML = '';
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') fecharVisualizador();
+});
 
 function filtrar() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();

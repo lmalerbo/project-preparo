@@ -1,16 +1,22 @@
-// Proxy para upload de arquivos de projeto (.dwg/.zip/.pdf) nas Releases do GitHub.
+// Proxy para upload e visualização de arquivos de projeto (.dwg/.zip/.pdf) nas
+// Releases do GitHub.
 //
-// Motivo: o formulario.html é estático e público (GitHub Pages) — qualquer token do GitHub
-// embutido nele é detectado e revogado automaticamente pelo secret scanning. Este Worker
-// guarda o token como secret do Cloudflare (nunca commitado) e expõe dois endpoints que o
-// formulario.html chama sem precisar de credencial nenhuma.
+// Motivo do upload: o formulario.html é estático e público (GitHub Pages) — qualquer
+// token do GitHub embutido nele é detectado e revogado automaticamente pelo secret
+// scanning. Este Worker guarda o token como secret do Cloudflare (nunca commitado).
+// Motivo do /view: o GitHub serve assets de release com Content-Disposition:
+// attachment e sem CORS — não dá pra visualizar inline direto do navegador.
+//
+// Endpoints (formulario.html e portal.html chamam sem precisar de credencial):
+//   POST /upload?tag=&name=&filename=   (body = arquivo)  → usado no formulario.html
+//   GET  /view?url=&name=                                  → usado no portal.html
 //
 // Deploy (via dashboard do Cloudflare):
 //   1. Workers & Pages → Create → Create Worker → cole este arquivo.
 //   2. Settings → Variables → Add secret: GH_TOKEN = <PAT com permissão "Contents" read/write
 //      no repo lmalerbo/project-preparo>.
 //   3. Anote a URL do worker (https://<nome>.<conta>.workers.dev) e configure
-//      RELEASE_PROXY_URL no formulario.html com esse valor.
+//      RELEASE_PROXY_URL no formulario.html e no portal.html com esse valor.
 
 const GH_OWNER = 'lmalerbo';
 const GH_REPO  = 'project-preparo';
@@ -46,6 +52,16 @@ function normAssetName(name) {
     .replace(COMBINING_MARKS_RE, '')
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
+}
+
+// O GitHub serve assets de release com Content-Disposition: attachment (até PDF),
+// então abrir a URL direto ou via <iframe> força download em vez de visualizar.
+// Esse endpoint busca o arquivo no servidor (sem CORS, é fetch server-to-server)
+// e devolve com Content-Disposition: inline + o Content-Type certo.
+function mimeFromName(name) {
+  const ext = String(name).split('.').pop().toLowerCase();
+  const map = { pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml' };
+  return map[ext] || 'application/octet-stream';
 }
 
 async function getOrCreateRelease(env, tag, name) {
@@ -95,6 +111,22 @@ export default {
         if (!res.ok) throw new Error(`upload ${filename}: ${res.status} ${await res.text()}`);
 
         return new Response(await res.text(), { headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
+      }
+
+      if (url.pathname === '/view' && request.method === 'GET') {
+        const assetUrl = url.searchParams.get('url') || '';
+        const name     = url.searchParams.get('name') || '';
+        const allowedPrefix = `https://github.com/${GH_OWNER}/${GH_REPO}/releases/download/`;
+        if (!assetUrl.startsWith(allowedPrefix)) {
+          return new Response('url inválida', { status: 400, headers: corsHeaders() });
+        }
+
+        const res = await fetch(assetUrl);
+        if (!res.ok) return new Response(`erro ao buscar arquivo: ${res.status}`, { status: res.status, headers: corsHeaders() });
+
+        return new Response(res.body, {
+          headers: { ...corsHeaders(), 'Content-Type': mimeFromName(name), 'Content-Disposition': 'inline' },
+        });
       }
 
       return new Response('Not found', { status: 404, headers: corsHeaders() });
