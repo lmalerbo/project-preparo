@@ -10,7 +10,9 @@ Estrutura esperada:
 Lê a aba "CONSERVAÇÃO" (uma linha por operação, talhões agrupados em lista/faixa,
 ex: "1,2,3" ou "1 AO 4"), explode cada linha em um registro por talhão, busca a
 área de cada talhão na base_fazendas e faz upsert em `programacao` no Supabase —
-preservando STATUS/TIPO_LINHA/CICLO já preenchidos para LAYERs existentes.
+preservando STATUS/TIPO_LINHA/CICLO/VOO já preenchidos para LAYERs existentes
+(voo é mantido fora da planilha porque é atualizado pelo sync do dronemgmt e/ou
+pelo ajuste manual no painel — a coluna VOOS da planilha só vale na 1ª inserção).
 """
 
 import os
@@ -75,17 +77,17 @@ print(f"Planilha de preparo encontrada: {SOURCE_PREPARO}")
 
 # ── 1. Ler valores existentes no Supabase (preservar preenchimento) ──────
 print("Lendo programação existente no Supabase...")
-_res = requests.get(f"{SUPABASE_URL}/rest/v1/programacao?select=layer,status,tipo_linha,ciclo", headers=SB_HEADERS)
+_res = requests.get(f"{SUPABASE_URL}/rest/v1/programacao?select=layer,status,tipo_linha,ciclo,voo", headers=SB_HEADERS)
 if not _res.ok:
     print(f"ERRO ao ler programacao: {_res.status_code} {_res.text}")
     fechar_log(_log_fh)
     input("\nPressione Enter para sair...")
     sys.exit(1)
-preserved = {}   # layer_str → (status, tipo, ciclo)
+preserved = {}   # layer_str → (status, tipo, ciclo, voo)
 for row in _res.json():
     layer = layer_to_str(row.get('layer'))
     if layer:
-        preserved[layer] = (row.get('status') or '', row.get('tipo_linha') or '', row.get('ciclo') or '')
+        preserved[layer] = (row.get('status') or '', row.get('tipo_linha') or '', row.get('ciclo') or '', row.get('voo') or '')
 print(f"  {len(preserved)} linhas existentes carregadas.\n")
 
 # ── 2. Ler base_fazendas (área por COD FAZ + TALHÃO) ──────────────────────
@@ -227,11 +229,11 @@ prog_rows = []
 for layer_val, rec in por_layer.items():
     ly_str = layer_to_str(layer_val)
     if ly_str in preserved:
-        status, tipo, ciclo = preserved[ly_str]
+        status, tipo, ciclo, voo_atual = preserved[ly_str]
     else:
-        status, tipo, ciclo = '', '', ''
+        status, tipo, ciclo, voo_atual = '', '', '', rec['voo']
         novos += 1
-    prog_rows.append(dict(rec, status=status, tipo_linha=tipo, ciclo=ciclo))
+    prog_rows.append(dict(rec, status=status, tipo_linha=tipo, ciclo=ciclo, voo=voo_atual))
 
 print(f"\nEnviando {len(prog_rows)} linhas (upsert por LAYER)...")
 HEADERS_UPSERT = dict(SB_HEADERS, Prefer='resolution=merge-duplicates,return=minimal')
@@ -255,8 +257,8 @@ removidos = layers_com_preenchimento - layers_novos_str
 if removidos:
     print(f"  ⚠  ATENÇÃO: {len(removidos)} LAYER(s) preenchidos não estão na nova base:")
     for ly in sorted(removidos)[:10]:
-        status, tipo, ciclo = preserved[ly]
-        print(f"     LAYER {ly}: {status} | {tipo} | {ciclo}")
+        status, tipo, ciclo, voo_atual = preserved[ly]
+        print(f"     LAYER {ly}: {status} | {tipo} | {ciclo} | voo={voo_atual}")
     if len(removidos) > 10:
         print(f"     ... e mais {len(removidos)-10}")
     print("     Esses dados continuam no Supabase — apenas saíram da base atual.\n")

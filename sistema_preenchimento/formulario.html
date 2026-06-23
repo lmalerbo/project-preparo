@@ -1571,9 +1571,11 @@ async function processarAtualizacaoBase() {
     _logBase(`${progRows.length} talhão(ões) para processar.`);
     if (!progRows.length) { _logBase('<span style="color:var(--red)">Nada para enviar.</span>'); return; }
 
-    // ── Preserva STATUS/TIPO_LINHA/CICLO já preenchidos ──
+    // ── Preserva STATUS/TIPO_LINHA/CICLO/VOO já preenchidos ──
+    // voo fica fora da planilha porque é atualizado pelo sync do dronemgmt e/ou
+    // pelo ajuste manual no painel — a coluna VOOS da planilha só vale na 1ª inserção.
     _logBase('Lendo programação existente no Supabase...');
-    const existentes = await _sbFetchAll(`${SUPABASE_URL}/rest/v1/programacao?select=layer,status,tipo_linha,ciclo`);
+    const existentes = await _sbFetchAll(`${SUPABASE_URL}/rest/v1/programacao?select=layer,status,tipo_linha,ciclo,voo`);
     const preserved = new Map(existentes.map(r => [String(r.layer), r]));
 
     let novos = 0;
@@ -1583,6 +1585,7 @@ async function processarAtualizacaoBase() {
         row.status = prev.status || '';
         row.tipo_linha = prev.tipo_linha || '';
         row.ciclo = prev.ciclo || '';
+        row.voo = prev.voo || '';
       } else {
         row.status = ''; row.tipo_linha = ''; row.ciclo = '';
         novos++;
@@ -1605,7 +1608,7 @@ async function processarAtualizacaoBase() {
 
     // ── Avisa sobre LAYERs preenchidos que saíram da base ativa ──
     const novosLayers = new Set(progRows.map(r => String(r.layer)));
-    const removidos = [...preserved.entries()].filter(([ly, v]) => !novosLayers.has(ly) && (v.status || v.tipo_linha || v.ciclo));
+    const removidos = [...preserved.entries()].filter(([ly, v]) => !novosLayers.has(ly) && (v.status || v.tipo_linha || v.ciclo || v.voo));
     if (removidos.length) {
       _logBase(`<span style="color:var(--accent)">⚠ ${removidos.length} LAYER(s) preenchido(s) não estão mais na base ativa (dados continuam no banco).</span>`);
     }

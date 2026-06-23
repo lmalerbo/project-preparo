@@ -105,6 +105,12 @@ Para usar o script:
 > simultâneas). Em vez disso, a coluna `FRENTE` da planilha real traz nome de equipe/equipamento
 > (ex: "FRAN TERRA", "MEGACENTER") — isso é importado como `equipe` (texto livre), com seu próprio
 > filtro, coluna na consulta e gráfico "Ha por Equipe" no dashboard.
+>
+> Reprocessar a planilha para um LAYER que já existe nunca sobrescreve o `voo` atual: a coluna
+> `VOOS` só é usada na 1ª inserção do LAYER. Depois disso, `voo` só muda pelo sync do dronemgmt
+> (`atualizar_voos.py`) ou pelo ajuste manual em "⚙ Gerenciar → Status de voo manual" — senão toda
+> reimportação da planilha (ex: para puxar talhões novos) apagaria atualizações de voo já feitas.
+> `equipe` continua vindo da planilha a cada execução (reflete redistribuição de equipe real).
 
 Quando o escopo de uma fazenda cresce no meio do projeto (demanda original previa só alguns
 talhões, mas o projeto acabou cobrindo mais), não é preciso reeditar a planilha de demanda: em
