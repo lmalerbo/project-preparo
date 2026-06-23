@@ -163,6 +163,35 @@
 
   .loading { text-align: center; padding: 60px; color: var(--muted); font-size: 14px; }
   .error-msg { background: rgba(217,92,92,.1); border: 1px solid var(--red); border-radius: 8px; padding: 14px 18px; color: var(--red); font-size: 13px; margin-bottom: 20px; }
+
+  @media (max-width: 640px) {
+    header { padding: 0 14px; height: 56px; }
+    .logo-mark { width: 30px; height: 30px; font-size: 12px; }
+    .logo-text { font-size: 12px; }
+    .logo-sub { display: none; }
+    .header-right { gap: 6px; }
+    .btn-header { padding: 6px 10px; font-size: 11px; }
+    .theme-toggle { width: 30px; height: 30px; }
+
+    .main { padding: 16px 12px; }
+    .toolbar { margin-bottom: 16px; }
+    .search-wrap { min-width: 0; flex: 1 1 100%; }
+    .counter { width: 100%; text-align: right; }
+
+    .releases-grid { gap: 10px; }
+    .release-header { padding: 12px 14px; flex-wrap: wrap; gap: 8px; }
+    .release-title { font-size: 14px; flex-wrap: wrap; gap: 6px; }
+    .release-date { display: none; }
+
+    .release-assets { padding: 10px 14px; }
+    .asset-row { flex-direction: column; align-items: stretch; gap: 10px; }
+    .asset-left { width: 100%; }
+    .asset-name { word-break: break-all; }
+    .asset-actions { width: 100%; }
+    .asset-actions .btn-view, .asset-actions .btn-download { flex: 1; text-align: center; }
+
+    .viewer-box { width: 100vw; height: 100vh; max-width: none; border-radius: 0; }
+  }
 </style>
 </head>
 <body>
@@ -184,7 +213,7 @@
   <div class="toolbar">
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input type="text" id="searchInput" placeholder="Buscar fazenda..." oninput="filtrar()">
+      <input type="text" id="searchInput" placeholder="Buscar por fazenda ou código..." oninput="filtrar()">
     </div>
     <span class="counter" id="counter">carregando...</span>
   </div>
@@ -261,7 +290,7 @@ function renderReleases(releases) {
       </div>`).join('') : `<div style="color:var(--muted);font-size:13px">Nenhum arquivo nesta fazenda.</div>`;
 
     return `
-    <div class="release-card open" data-name="${rel.name || rel.tag_name}">
+    <div class="release-card" data-name="${rel.name || rel.tag_name}">
       <div class="release-header" onclick="toggleCard(this.parentElement)">
         <div class="release-title">
           ${rel.name || rel.tag_name}
@@ -269,7 +298,7 @@ function renderReleases(releases) {
         </div>
         <div style="display:flex;gap:14px;align-items:center">
           <span class="release-date">${fmtDate(rel.published_at || rel.created_at)}</span>
-          <span class="release-chevron">▲</span>
+          <span class="release-chevron">▼</span>
         </div>
       </div>
       <div class="release-assets">${assetsHtml}</div>
@@ -315,7 +344,9 @@ document.addEventListener('keydown', e => {
 
 function filtrar() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
-  const filtered = q ? allReleases.filter(r => (r.name || r.tag_name).toLowerCase().includes(q)) : allReleases;
+  const filtered = q ? allReleases.filter(r =>
+    (r.name || '').toLowerCase().includes(q) || (r.tag_name || '').toLowerCase().includes(q)
+  ) : allReleases;
   renderReleases(filtered);
 }
 
