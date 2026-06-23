@@ -53,16 +53,21 @@ project-preparo/
    const SUPABASE_KEY = 'sb_publishable_eJA9YDyXdRI73lqPPYnATA_INEU3vzu';  // → anon key real
    ```
 
-## 3. Cloudflare Worker — proxy de upload
+## 3. Cloudflare Worker — proxy de upload/visualização/sincronização
 
 1. No Cloudflare Dashboard → Workers & Pages → Create Worker.
 2. Cole o conteúdo de `cloudflare-worker/release-proxy.js`.
-3. Settings → Variables → Add secret: `GH_TOKEN` = PAT do GitHub com permissão `Contents: Read/Write` no repo `project-preparo`.
+3. Settings → Variables → Add secret: `GH_TOKEN` = PAT do GitHub com permissão `Contents: Read/Write`
+   **e `Actions: Read and write`** no repo `project-preparo` (Actions é necessário para os endpoints
+   `/trigger-voos` e `/voos-status` — sem isso eles respondem 403/404, mas upload/view continuam OK).
 4. Anote a URL do worker (ex: `https://project-preparo-proxy.leonardo-malerbo.workers.dev`).
-5. No `formulario.html`, substitua:
+5. No `formulario.html` e no `portal.html`, substitua:
    ```js
    const RELEASE_PROXY_URL = 'https://project-preparo-proxy.leonardo-malerbo.workers.dev/';  // → URL real do worker
    ```
+
+> Sempre que `cloudflare-worker/release-proxy.js` for editado, é preciso colar o conteúdo atualizado
+> de novo no dashboard do Cloudflare e fazer deploy — `git push` não atualiza o Worker publicado.
 
 ## 4. Nomenclatura dos arquivos de projeto
 
@@ -140,7 +145,15 @@ A aba "Registros" mostra automaticamente a fila de pendências de cada analista 
 montar uma lista manual) — fazendas podem ser fixadas manualmente no topo da lista (📌) para
 priorizar, mas a fila em si é calculada a partir do estágio de cada fazenda.
 
-> Importante: até o momento, a liberação de uma fazenda para o Analista A **não depende** do status
-> do voo (`voo_status`/dronemgmt) — isso ficou pendente porque o mapeamento `STATUS_LABELS` em
-> `engine/atualizar_voos.py` ainda está vazio (os códigos numéricos de `control_status` não foram
-> confirmados na tela do portal). Quando esse mapeamento existir, dá para adicionar esse gate.
+> A liberação de uma fazenda para o Analista A depende do status do voo: enquanto algum talhão não
+> estiver com `voo = 'Processado'`, o status do projeto mostra o motivo do bloqueio (Sem solicitação/
+> A voar/Voado/Processando) em vez de "Identificação" (`_fazendaVooBloqueio()` em `formulario.html`).
+
+### Sincronização de voo (dronemgmt)
+
+`.github/workflows/atualizar-voos.yml` roda `engine/atualizar_voos.py` automaticamente de hora em
+hora (cron) e também pode ser disparado manualmente — pelo GitHub (Actions → Run workflow) ou pelo
+botão **"⚙ Gerenciar → Voo (dronemgmt) → Sincronizar agora"**, que chama `POST /trigger-voos` no
+Worker (`release-proxy.js`), e mostra o status da última execução via `GET /voos-status` (ambos
+exigem a permissão `Actions: Read and write` no `GH_TOKEN`, ver seção 3). Secrets necessários no
+repo (Settings → Secrets and variables → Actions): `DRONEMGMT_USUARIO`, `DRONEMGMT_SENHA`.

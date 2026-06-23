@@ -455,7 +455,20 @@
   .admin-perfil-check { display: flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted); cursor: pointer; }
   .admin-perfil-check input { cursor: pointer; accent-color: var(--accent); }
   .admin-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .admin-category-body > .admin-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
   .admin-note { font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+  .admin-category { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .admin-category:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+  .admin-category-header {
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer; user-select: none;
+    font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: .8px;
+  }
+  .admin-category-header:hover { color: var(--accent); }
+  .admin-category-chevron { color: var(--muted); font-size: 10px; transition: transform .2s; }
+  .admin-category.open .admin-category-chevron { transform: rotate(180deg); }
+  .admin-category-body { display: none; }
+  .admin-category.open .admin-category-body { display: block; }
   .mes-filter-select {
     background: var(--panel); border: 1px solid var(--border); border-radius: 4px;
     color: var(--muted); font-size: 11px; font-family: monospace; font-weight: 700;
@@ -1153,96 +1166,129 @@
     </div>
     <!-- Seção: Admin / Gerenciar usuários -->
     <div id="modalAdminSection" style="display:none">
-      <h3>Gerenciar Usuários</h3>
+      <h3>Gerenciar</h3>
       <div id="adminSyncWarning" style="display:none;color:var(--accent);font-size:11px;
            padding:6px 8px;border:1px solid var(--accent);border-radius:4px;margin-bottom:8px">
         ⚠ Alterações locais não aplicadas a todos — exporte e rode ATUALIZAR.bat para propagar.
       </div>
-      <div id="adminUserList" style="max-height:220px;overflow-y:auto"></div>
-      <div class="admin-section">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Novo usuário</label>
-        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-          <input type="text" id="inputAdminUser" placeholder="Nome" style="flex:1">
-          <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaA" checked> Analista A</label>
-          <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaB" checked> Analista B</label>
-          <label class="admin-perfil-check"><input type="checkbox" id="chkDashboard" checked> Dashboard</label>
-          <button class="btn-modal-ok" onclick="adminAddUser()" style="padding:8px 14px;white-space:nowrap">+</button>
+
+      <div class="admin-category open" id="catUsuarios">
+        <div class="admin-category-header" onclick="_toggleAdminCategory(this)">
+          Usuários <span class="admin-category-chevron">▼</span>
+        </div>
+        <div class="admin-category-body">
+          <div id="adminUserList" style="max-height:220px;overflow-y:auto"></div>
+          <div class="admin-section">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Novo usuário</label>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+              <input type="text" id="inputAdminUser" placeholder="Nome" style="flex:1">
+              <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaA" checked> Analista A</label>
+              <label class="admin-perfil-check"><input type="checkbox" id="chkAnalistaB" checked> Analista B</label>
+              <label class="admin-perfil-check"><input type="checkbox" id="chkDashboard" checked> Dashboard</label>
+              <button class="btn-modal-ok" onclick="adminAddUser()" style="padding:8px 14px;white-space:nowrap">+</button>
+            </div>
+          </div>
+          <p class="admin-note">Para aplicar em todos os computadores: clique em "Exportar", salve o arquivo <strong>usuarios.json</strong> na pasta do projeto e rode <strong>ATUALIZAR.bat</strong>.</p>
         </div>
       </div>
-      <p class="admin-note">Para aplicar em todos os computadores: clique em "Exportar", salve o arquivo <strong>usuarios.json</strong> na pasta do projeto e rode <strong>ATUALIZAR.bat</strong>.</p>
 
-      <div class="admin-section">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Atualizar base / Fazendas</label>
+      <div class="admin-category" id="catDados">
+        <div class="admin-category-header" onclick="_toggleAdminCategory(this)">
+          Base de dados <span class="admin-category-chevron">▼</span>
+        </div>
+        <div class="admin-category-body">
+          <div class="admin-section">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Atualizar base / Fazendas</label>
 
-        <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-          <span style="font-size:12px;flex:1">Planilha de preparo (.xlsx)</span>
-          <input type="file" id="inputBasePreparo" accept=".xlsx" style="font-size:11px;max-width:170px">
-          <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('preparo')" title="Formato esperado">ⓘ</button>
-        </div>
-        <div id="infoBasePreparo" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
-          Usa a aba <strong>"CONSERVAÇÃO"</strong>. O sistema localiza automaticamente a linha de
-          cabeçalho (procura por <strong>CODIGO</strong>, <strong>SEÇÃO</strong> e <strong>TALHÕES</strong>).
-          Colunas lidas: <strong>FRENTE</strong> (equipe), <strong>MÊS</strong>, <strong>CODIGO</strong>,
-          <strong>SEÇÃO</strong>, <strong>TALHÕES</strong> (aceita lista "1,2,3", faixa "1 AO 4" ou
-          número único), <strong>TIPO ÁREA</strong> e <strong>VOOS</strong>. Uma linha pode cobrir
-          vários talhões — cada um vira um registro.
-          <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloPreparo()">⬇ Baixar modelo</button></div>
-        </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <span style="font-size:12px;flex:1">Planilha de preparo (.xlsx)</span>
+              <input type="file" id="inputBasePreparo" accept=".xlsx" style="font-size:11px;max-width:170px">
+              <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('preparo')" title="Formato esperado">ⓘ</button>
+            </div>
+            <div id="infoBasePreparo" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
+              Usa a aba <strong>"CONSERVAÇÃO"</strong>. O sistema localiza automaticamente a linha de
+              cabeçalho (procura por <strong>CODIGO</strong>, <strong>SEÇÃO</strong> e <strong>TALHÕES</strong>).
+              Colunas lidas: <strong>FRENTE</strong> (equipe), <strong>MÊS</strong>, <strong>CODIGO</strong>,
+              <strong>SEÇÃO</strong>, <strong>TALHÕES</strong> (aceita lista "1,2,3", faixa "1 AO 4" ou
+              número único), <strong>TIPO ÁREA</strong> e <strong>VOOS</strong>. Uma linha pode cobrir
+              vários talhões — cada um vira um registro.
+              <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloPreparo()">⬇ Baixar modelo</button></div>
+            </div>
 
-        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
-          <span style="font-size:12px;flex:1">Base de fazendas (.xlsx)</span>
-          <input type="file" id="inputBaseFazendas" accept=".xlsx" style="font-size:11px;max-width:170px">
-          <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('fazendas')" title="Formato esperado">ⓘ</button>
-        </div>
-        <div id="infoBaseFazendas" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
-          Cabeçalho na primeira linha, com as colunas <strong>SECAO</strong> (código da fazenda),
-          <strong>DESC_SECAO</strong> (nome da fazenda), <strong>TALHAO</strong> (número do talhão) e
-          <strong>AREA_PROD</strong> (área em ha). Uma linha por talhão — fornece a área de cada talhão
-          listado na planilha de preparo; talhão sem entrada aqui fica com área 0.
-          <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloBaseFazendas()">⬇ Baixar modelo</button></div>
-        </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+              <span style="font-size:12px;flex:1">Base de fazendas (.xlsx)</span>
+              <input type="file" id="inputBaseFazendas" accept=".xlsx" style="font-size:11px;max-width:170px">
+              <button class="btn-modal-cancel" style="padding:4px 8px;font-size:11px" onclick="_toggleInfoBase('fazendas')" title="Formato esperado">ⓘ</button>
+            </div>
+            <div id="infoBaseFazendas" style="display:none;font-size:11px;color:var(--muted);background:var(--surface2);border-radius:6px;padding:8px;margin-top:6px">
+              Cabeçalho na primeira linha, com as colunas <strong>SECAO</strong> (código da fazenda),
+              <strong>DESC_SECAO</strong> (nome da fazenda), <strong>TALHAO</strong> (número do talhão) e
+              <strong>AREA_PROD</strong> (área em ha). Uma linha por talhão — fornece a área de cada talhão
+              listado na planilha de preparo; talhão sem entrada aqui fica com área 0.
+              <div style="margin-top:6px"><button class="btn-modal-cancel" style="font-size:11px" onclick="_baixarModeloBaseFazendas()">⬇ Baixar modelo</button></div>
+            </div>
 
-        <div style="margin-top:10px">
-          <button class="btn-modal-ok" onclick="processarAtualizacaoBase()">Processar e atualizar</button>
+            <div style="margin-top:10px">
+              <button class="btn-modal-ok" onclick="processarAtualizacaoBase()">Processar e atualizar</button>
+            </div>
+            <div id="logBaseAtualizacao" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+          </div>
+
+          <div class="admin-section">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Adicionar talhões a fazenda existente</label>
+            <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
+              Para quando o projeto avançou e cobriu mais talhões do que a demanda original previa.
+              Acha a área de cada talhão novo na Base de fazendas (.xlsx).
+            </div>
+            <select id="selFazendaAdd" style="width:100%;margin-bottom:8px"></select>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:12px;flex:1">Base de fazendas (.xlsx)</span>
+              <input type="file" id="inputBaseFazendasAdd" accept=".xlsx" style="font-size:11px;max-width:170px">
+            </div>
+            <div style="margin-top:10px">
+              <button class="btn-modal-ok" onclick="buscarTalhoesNovos()">Buscar talhões novos</button>
+            </div>
+            <div id="talhoesNovosList" style="margin-top:8px"></div>
+            <div id="logTalhoesNovos" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+          </div>
         </div>
-        <div id="logBaseAtualizacao" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
       </div>
 
-      <div class="admin-section">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Status de voo manual</label>
-        <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
-          Para quando a sincronização automática com o dronemgmt estiver fora do ar —
-          ajusta o status de voo de uma fazenda (todos os talhões) na mão. Quando a
-          sincronização voltar, ela sobrescreve este valor normalmente.
+      <div class="admin-category" id="catVoo">
+        <div class="admin-category-header" onclick="_toggleAdminCategory(this)">
+          Voo (dronemgmt) <span class="admin-category-chevron">▼</span>
         </div>
-        <select id="selFazendaVoo" style="width:100%;margin-bottom:8px"></select>
-        <select id="selNovoStatusVoo" style="width:100%;margin-bottom:8px">
-          <option value="Sem solicitação">Sem solicitação</option>
-          <option value="A voar">A voar</option>
-          <option value="Voado">Voado</option>
-          <option value="Processando">Processando</option>
-          <option value="Processado">Processado</option>
-        </select>
-        <button class="btn-modal-ok" onclick="aplicarVooManual()">Aplicar</button>
-        <div id="logVooManual" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
-      </div>
+        <div class="admin-category-body">
+          <div class="admin-section">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Sincronização automática</label>
+            <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
+              Roda sozinha de hora em hora. Use o botão para forçar uma atualização agora,
+              sem esperar o próximo ciclo.
+            </div>
+            <div id="vooSyncStatus" style="font-size:11px;margin-bottom:8px">Carregando status...</div>
+            <button class="btn-modal-ok" onclick="sincronizarVoosAgora()">↻ Sincronizar agora</button>
+            <div id="logVooSync" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+          </div>
 
-      <div class="admin-section">
-        <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Adicionar talhões a fazenda existente</label>
-        <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
-          Para quando o projeto avançou e cobriu mais talhões do que a demanda original previa.
-          Acha a área de cada talhão novo na Base de fazendas (.xlsx).
+          <div class="admin-section">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Status de voo manual</label>
+            <div style="font-size:11px;color:var(--muted);margin:6px 0 8px">
+              Para quando a sincronização automática com o dronemgmt estiver fora do ar —
+              ajusta o status de voo de uma fazenda (todos os talhões) na mão. Quando a
+              sincronização voltar, ela sobrescreve este valor normalmente.
+            </div>
+            <select id="selFazendaVoo" style="width:100%;margin-bottom:8px"></select>
+            <select id="selNovoStatusVoo" style="width:100%;margin-bottom:8px">
+              <option value="Sem solicitação">Sem solicitação</option>
+              <option value="A voar">A voar</option>
+              <option value="Voado">Voado</option>
+              <option value="Processando">Processando</option>
+              <option value="Processado">Processado</option>
+            </select>
+            <button class="btn-modal-ok" onclick="aplicarVooManual()">Aplicar</button>
+            <div id="logVooManual" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
+          </div>
         </div>
-        <select id="selFazendaAdd" style="width:100%;margin-bottom:8px"></select>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;flex:1">Base de fazendas (.xlsx)</span>
-          <input type="file" id="inputBaseFazendasAdd" accept=".xlsx" style="font-size:11px;max-width:170px">
-        </div>
-        <div style="margin-top:10px">
-          <button class="btn-modal-ok" onclick="buscarTalhoesNovos()">Buscar talhões novos</button>
-        </div>
-        <div id="talhoesNovosList" style="margin-top:8px"></div>
-        <div id="logTalhoesNovos" style="margin-top:8px;font-size:11px;line-height:1.8"></div>
       </div>
 
       <div class="modal-actions">
@@ -1620,6 +1666,65 @@ async function processarAtualizacaoBase() {
     renderDashboard();
   } catch (e) {
     _logBase(`<span style="color:var(--red)">✗ ${e.message}</span>`);
+  }
+}
+
+// ── Sincronização de voo com o dronemgmt (dispara/acompanha o workflow do GitHub Actions) ──
+// O workflow já roda sozinho de hora em hora (.github/workflows/atualizar-voos.yml);
+// isso só dá um jeito de forçar uma rodada agora, sem esperar, pelo navegador.
+let _vooSyncPollTimer = null;
+
+function _fmtRelativo(iso) {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (min < 1) return 'agora mesmo';
+  if (min < 60) return `há ${min} min`;
+  return `há ${Math.round(min / 60)}h`;
+}
+
+function _renderVooSyncStatus(run) {
+  const el = document.getElementById('vooSyncStatus');
+  if (!el) return;
+  if (!run) { el.innerHTML = '<span style="color:var(--muted)">Nenhuma execução encontrada.</span>'; return; }
+  const concluido = run.status === 'completed';
+  const ok = concluido && run.conclusion === 'success';
+  const cor = !concluido ? 'var(--accent)' : ok ? 'var(--green)' : 'var(--red)';
+  const texto = !concluido ? 'Em execução…' : ok ? 'Concluída com sucesso' : `Falhou (${run.conclusion})`;
+  el.innerHTML = `<span style="color:${cor};font-weight:700">${texto}</span>
+    <span style="color:var(--muted)"> — ${_fmtRelativo(run.created_at)}</span>
+    <a href="${run.html_url}" target="_blank" style="margin-left:6px;color:var(--accent)">ver no GitHub ↗</a>`;
+}
+
+async function _carregarStatusVoo() {
+  const el = document.getElementById('vooSyncStatus');
+  if (el) el.innerHTML = '<span style="color:var(--muted)">Carregando status...</span>';
+  try {
+    const base = RELEASE_PROXY_URL.replace(/\/+$/, '');
+    const res = await fetch(`${base}/voos-status`);
+    if (!res.ok) throw new Error(`${res.status}`);
+    const data = await res.json();
+    const run = (data.workflow_runs || [])[0];
+    _renderVooSyncStatus(run);
+    if (_vooSyncPollTimer) { clearInterval(_vooSyncPollTimer); _vooSyncPollTimer = null; }
+    if (run && run.status !== 'completed') {
+      _vooSyncPollTimer = setInterval(_carregarStatusVoo, 15000);
+    }
+  } catch (e) {
+    if (el) el.innerHTML = `<span style="color:var(--muted)">Não foi possível carregar o status (${e.message}).</span>`;
+  }
+}
+
+async function sincronizarVoosAgora() {
+  const log = document.getElementById('logVooSync');
+  const setLog = msg => { if (log) log.innerHTML = msg; };
+  setLog('Disparando sincronização...');
+  try {
+    const base = RELEASE_PROXY_URL.replace(/\/+$/, '');
+    const res = await fetch(`${base}/trigger-voos`, { method: 'POST' });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    setLog('<span style="color:var(--green);font-weight:700">✓ Disparada! Leva alguns minutos — acompanhe abaixo.</span>');
+    setTimeout(_carregarStatusVoo, 4000);
+  } catch (e) {
+    setLog(`<span style="color:var(--red)">✗ ${e.message}</span>`);
   }
 }
 
@@ -2205,12 +2310,17 @@ document.getElementById('modalOverlay').addEventListener('click', e => {
 });
 
 // ── Admin panel ──────────────────────────────────────────────────────────
+function _toggleAdminCategory(headerEl) {
+  headerEl.parentElement.classList.toggle('open');
+}
+
 function openAdminSection() {
   document.getElementById('modalSelectSection').style.display = 'none';
   document.getElementById('modalAdminSection').style.display  = '';
   renderAdminList();
   _popularSelectFazendaVoo();
   _popularSelectFazendaAdd();
+  _carregarStatusVoo();
   const htmlNomes = JSON.stringify(USUARIOS_CONFIG.map(u => u.nome.toLowerCase()).sort());
   const localNomes = JSON.stringify(adminConfig.map(u => u.nome).sort());
   const htmlPerfis = JSON.stringify(USUARIOS_CONFIG.map(u => ({n: u.nome.toLowerCase(), p: [...(u.perfis||[])].sort()})).sort((a,b)=>a.n.localeCompare(b.n)));
@@ -2222,6 +2332,7 @@ function closeAdminSection() {
   document.getElementById('modalSelectSection').style.display = '';
   document.getElementById('modalAdminSection').style.display  = 'none';
   renderUserChips();
+  if (_vooSyncPollTimer) { clearInterval(_vooSyncPollTimer); _vooSyncPollTimer = null; }
 }
 
 function renderAdminList() {

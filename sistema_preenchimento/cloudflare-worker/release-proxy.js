@@ -10,11 +10,14 @@
 // Endpoints (formulario.html e portal.html chamam sem precisar de credencial):
 //   POST /upload?tag=&name=&filename=   (body = arquivo)  → usado no formulario.html
 //   GET  /view?url=&name=                                  → usado no portal.html
+//   POST /trigger-voos                                     → dispara o workflow atualizar-voos.yml
+//   GET  /voos-status                                      → status da última execução desse workflow
 //
 // Deploy (via dashboard do Cloudflare):
 //   1. Workers & Pages → Create → Create Worker → cole este arquivo.
 //   2. Settings → Variables → Add secret: GH_TOKEN = <PAT com permissão "Contents" read/write
-//      no repo lmalerbo/project-preparo>.
+//      E "Actions" read/write no repo lmalerbo/project-preparo — sem "Actions" os endpoints
+//      /trigger-voos e /voos-status respondem 403/404>.
 //   3. Anote a URL do worker (https://<nome>.<conta>.workers.dev) e configure
 //      RELEASE_PROXY_URL no formulario.html e no portal.html com esse valor.
 
@@ -127,6 +130,24 @@ export default {
         return new Response(res.body, {
           headers: { ...corsHeaders(), 'Content-Type': mimeFromName(name), 'Content-Disposition': 'inline' },
         });
+      }
+
+      if (url.pathname === '/trigger-voos' && request.method === 'POST') {
+        const res = await fetch(
+          `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/atualizar-voos.yml/dispatches`,
+          { method: 'POST', headers: ghHeaders(env, { 'Content-Type': 'application/json' }), body: JSON.stringify({ ref: 'main' }) }
+        );
+        if (!res.ok) return new Response(`erro ao disparar: ${res.status} ${await res.text()}`, { status: res.status, headers: corsHeaders() });
+        return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
+      }
+
+      if (url.pathname === '/voos-status' && request.method === 'GET') {
+        const res = await fetch(
+          `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/actions/workflows/atualizar-voos.yml/runs?per_page=1`,
+          { headers: ghHeaders(env) }
+        );
+        if (!res.ok) return new Response(`erro ao consultar status: ${res.status} ${await res.text()}`, { status: res.status, headers: corsHeaders() });
+        return new Response(await res.text(), { headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
       }
 
       return new Response('Not found', { status: 404, headers: corsHeaders() });
